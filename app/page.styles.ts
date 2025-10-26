@@ -1,0 +1,15 @@
+export const homeStyles = {
+  container: "flex min-h-screen items-center justify-center bg-gradient-to-b from-pink-50 to-white dark:from-gray-900 dark:to-black",
+  main: "flex w-full max-w-4xl flex-col items-center justify-center px-6 py-16 text-center",
+  icon: "mb-8 text-6xl",
+  title: "mb-4 text-5xl font-bold tracking-tight text-gray-900 dark:text-white md:text-6xl",
+  subtitle: "mb-8 max-w-2xl text-xl text-gray-600 dark:text-gray-300",
+  buttonContainer: "flex flex-col gap-4 sm:flex-row",
+  primaryButton: "rounded-lg bg-pink-600 px-8 py-3 text-lg font-semibold text-white transition-colors hover:bg-pink-700",
+  secondaryButton: "rounded-lg border-2 border-gray-300 px-8 py-3 text-lg font-semibold text-gray-700 transition-colors hover:border-gray-400 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800",
+  featuresGrid: "mt-24 grid gap-8 md:grid-cols-3",
+  featureCard: "rounded-lg bg-white p-6 shadow-lg dark:bg-gray-800",
+  featureIcon: "mb-4 text-4xl",
+  featureTitle: "mb-2 text-xl font-semibold text-gray-900 dark:text-white",
+  featureDescription: "text-gray-600 dark:text-gray-300",
+} as const

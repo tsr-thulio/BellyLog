@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BellyLog 🤰
+
+A modern pregnancy tracking application built with Next.js, Material UI, and Supabase.
+
+## Features
+
+- 📅 Track your pregnancy journey and milestones
+- 💪 Monitor health symptoms and wellness
+- ❤️ Document special moments throughout your pregnancy
+- 🔐 Secure authentication with Google OAuth
+- 📱 Responsive design with Material UI
+- ☁️ Cloud database with Supabase
+
+## Tech Stack
+
+- **Framework:** Next.js 16.0.0 (App Router)
+- **UI Library:** Material UI 7.3.4
+- **Styling:** Tailwind CSS 4.x + Emotion
+- **Database:** Supabase (PostgreSQL)
+- **Authentication:** Supabase Auth with Google OAuth
+- **Language:** TypeScript
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+
+- Docker Desktop (for local Supabase)
+- Google OAuth credentials (see `GOOGLE_AUTH_SETUP.md`)
+
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/tsr-thulio/BellyLog.git
+cd BellyLog
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Set up environment variables:
+```bash
+cp .env.example .env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Start Supabase locally:
+```bash
+npm run supabase:start
+```
 
-## Learn More
+5. Configure Google OAuth (see `GOOGLE_AUTH_SETUP.md`)
 
-To learn more about Next.js, take a look at the following resources:
+6. Run the development server:
+```bash
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Open [http://localhost:3000](http://localhost:3000) to see the application.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Documentation
 
-## Deploy on Vercel
+- **Database Setup:** See [DATABASE.md](./DATABASE.md) for Supabase configuration
+- **Google OAuth:** See [GOOGLE_AUTH_SETUP.md](./GOOGLE_AUTH_SETUP.md) for authentication setup
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Available Scripts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+- `npm run supabase:start` - Start local Supabase
+- `npm run supabase:stop` - Stop local Supabase
+- `npm run supabase:status` - Check Supabase status
+- `npm run supabase:reset` - Reset local database
+
+## Deployment
+
+### Deploy to Vercel
+
+1. Push your code to GitHub
+2. Import the project in [Vercel](https://vercel.com/new)
+3. Add environment variables:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+4. Deploy
+
+For detailed deployment instructions, see [DATABASE.md](./DATABASE.md) and [GOOGLE_AUTH_SETUP.md](./GOOGLE_AUTH_SETUP.md).
+
+## License
+
+This project is private and proprietary.
