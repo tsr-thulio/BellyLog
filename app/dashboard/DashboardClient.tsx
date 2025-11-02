@@ -5,6 +5,7 @@ import {
   Avatar,
   Box,
   Button,
+  Card,
   Container,
   IconButton,
   Menu,
@@ -17,6 +18,9 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import PregnantWomanIcon from '@mui/icons-material/PregnantWoman'
+import FavoriteIcon from '@mui/icons-material/Favorite'
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
+import BabyChangingStationIcon from '@mui/icons-material/BabyChangingStation'
 import { dashboardStyles } from './DashboardClient.styles'
 import ProfileSetupModal from './components/ProfileSetupModal'
 import { getProfile } from '@/lib/api/profile'
@@ -101,30 +105,29 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   return (
     <Box sx={dashboardStyles.rootBox}>
       {/* App Bar */}
-      <AppBar position="static">
+      <AppBar position="static" sx={dashboardStyles.appBar} elevation={0}>
         <Toolbar>
           <PregnantWomanIcon sx={dashboardStyles.pregnantIcon} />
-          <Typography variant="h6" component="div" sx={dashboardStyles.title}>
-            BellyLog
+          <Typography sx={dashboardStyles.title}>
+            BellyLog ✨
           </Typography>
           <Box sx={dashboardStyles.userBox}>
-            <Typography variant="body2">
-              {user.email}
-            </Typography>
-            <IconButton
-              size="large"
-              aria-label="account of current user"
-              aria-controls="menu-appbar"
-              aria-haspopup="true"
+            <Button
               onClick={handleMenu}
+              sx={dashboardStyles.userButton}
               color="inherit"
+              endIcon={
+                <Avatar
+                  alt={user.user_metadata?.full_name || user.email || 'User'}
+                  src={user.user_metadata?.avatar_url}
+                  sx={dashboardStyles.avatar}
+                />
+              }
             >
-              <Avatar
-                alt={user.user_metadata?.full_name || user.email || 'User'}
-                src={user.user_metadata?.avatar_url}
-                sx={dashboardStyles.avatar}
-              />
-            </IconButton>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                {user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'}
+              </Typography>
+            </Button>
             <Menu
               id="menu-appbar"
               anchorEl={anchorEl}
@@ -135,7 +138,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
               onClose={handleClose}
             >
               <MenuItem onClick={handleLogout} disabled={loading}>
-                {loading ? 'Logging out...' : 'Logout'}
+                {loading ? 'Logging out... 👋' : 'Logout'}
               </MenuItem>
             </Menu>
           </Box>
@@ -144,33 +147,48 @@ export default function DashboardClient({ user }: DashboardClientProps) {
 
       {/* Main Content */}
       <Container maxWidth="lg" sx={dashboardStyles.container}>
-        <Box sx={dashboardStyles.contentBox}>
-          <Avatar
-            alt={user.user_metadata?.full_name || user.email || 'User'}
-            src={user.user_metadata?.avatar_url}
-            sx={dashboardStyles.largeAvatar}
-          />
-          <Typography variant="h4" component="h1">
-            Welcome, {user.user_metadata?.full_name || 'User'}!
-          </Typography>
-          <Box sx={{ textAlign: 'center' }}>
-            <Typography variant="body1" color="text.secondary">
-              You have successfully logged in to BellyLog.
+        {/* Welcome Card */}
+        <Card sx={dashboardStyles.welcomeCard}>
+          <Box sx={dashboardStyles.welcomeContent}>
+            <Typography variant="h3" sx={{ fontWeight: 800, mb: 2 }}>
+              Hey {user.user_metadata?.full_name?.split(' ')[0] || 'Mama'}! 👋
             </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Start tracking your pregnancy journey!
+            <Typography variant="h6" sx={{ opacity: 0.95, fontWeight: 500 }}>
+              Welcome to your pregnancy journey dashboard
             </Typography>
           </Box>
+        </Card>
 
-          {/* Placeholder for future content */}
-          <Box sx={dashboardStyles.placeholderBox}>
-            <Typography variant="h6" gutterBottom>
-              Your Dashboard
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Dashboard features coming soon...
-            </Typography>
-          </Box>
+        {/* Stats Grid */}
+        <Box sx={dashboardStyles.statsGrid}>
+          <Card sx={dashboardStyles.statCard}>
+            <FavoriteIcon sx={dashboardStyles.statIcon} />
+            <Typography sx={dashboardStyles.statValue}>28</Typography>
+            <Typography sx={dashboardStyles.statLabel}>Weeks Along</Typography>
+          </Card>
+          <Card sx={dashboardStyles.statCard}>
+            <CalendarTodayIcon sx={dashboardStyles.statIcon} />
+            <Typography sx={dashboardStyles.statValue}>84</Typography>
+            <Typography sx={dashboardStyles.statLabel}>Days to Go</Typography>
+          </Card>
+          <Card sx={dashboardStyles.statCard}>
+            <BabyChangingStationIcon sx={dashboardStyles.statIcon} />
+            <Typography sx={dashboardStyles.statValue}>12</Typography>
+            <Typography sx={dashboardStyles.statLabel}>Weeks Left</Typography>
+          </Card>
+        </Box>
+
+        {/* Placeholder for future content */}
+        <Box sx={dashboardStyles.placeholderBox}>
+          <Typography sx={dashboardStyles.comingSoonText}>
+            More Amazing Features Coming Soon! 🎉
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+            We're building something special for you and your baby
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Track appointments • Monitor symptoms • Connect with community • And so much more!
+          </Typography>
         </Box>
       </Container>
 

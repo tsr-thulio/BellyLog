@@ -67,51 +67,35 @@ export default function LoginPage() {
   // Show loading state while checking for existing session
   if (checking) {
     return (
-      <Container maxWidth="sm">
-        <Box sx={loginStyles.containerBox}>
-          <Typography variant="h6" color="text.secondary">
-            Checking session...
-          </Typography>
-        </Box>
-      </Container>
+      <Box sx={loginStyles.containerBox}>
+        <Typography variant="h6" sx={{ color: 'white', fontWeight: 600 }}>
+          Checking session...
+        </Typography>
+      </Box>
     )
   }
 
   return (
-    <Container maxWidth="sm">
-      <Box sx={loginStyles.containerBox}>
+    <Box sx={loginStyles.containerBox}>
+      <Container maxWidth="sm">
         <Card sx={loginStyles.card}>
           <CardContent sx={loginStyles.cardContent}>
             {/* Logo/Brand Section */}
             <Box sx={loginStyles.logoBox}>
               <PregnantWomanIcon sx={loginStyles.pregnantIcon} />
-              <Typography
-                variant="h4"
-                component="h1"
-                fontWeight="bold"
-                gutterBottom
-              >
+              <Typography sx={loginStyles.title}>
                 BellyLog
               </Typography>
-              <Typography
-                variant="body1"
-                color="text.secondary"
-                textAlign="center"
-              >
-                Track your pregnancy journey
+              <Typography sx={loginStyles.subtitle}>
+                Your amazing pregnancy journey ✨
               </Typography>
             </Box>
 
             <Divider sx={loginStyles.divider} />
 
             {/* Welcome Text */}
-            <Typography
-              variant="h6"
-              component="h2"
-              textAlign="center"
-              mb={3}
-            >
-              Welcome back!
+            <Typography sx={loginStyles.welcomeText}>
+              Welcome back, mama! 👋
             </Typography>
 
             {/* Error Alert */}
@@ -131,22 +115,16 @@ export default function LoginPage() {
               disabled={loading}
               sx={loginStyles.googleButton}
             >
-              {loading ? 'Signing in...' : 'Continue with Google'}
+              {loading ? 'Signing in... 🚀' : 'Continue with Google 🌟'}
             </Button>
 
             {/* Terms and Privacy */}
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              textAlign="center"
-              display="block"
-              mt={3}
-            >
+            <Typography sx={loginStyles.termsText}>
               By continuing, you agree to our Terms of Service and Privacy Policy
             </Typography>
           </CardContent>
         </Card>
-      </Box>
-    </Container>
+      </Container>
+    </Box>
   )
 }
