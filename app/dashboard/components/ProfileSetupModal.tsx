@@ -12,8 +12,9 @@ import {
   Stepper,
   Typography,
 } from '@mui/material'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dayjs } from 'dayjs'
+import dayjs from 'dayjs'
 import {
   ConceptionType,
   PreExistingCondition,
@@ -31,18 +32,20 @@ import { profileSetupModalStyles } from './ProfileSetupModal.styles'
 import EssentialPregnancyStep from './ProfileSetupSteps/EssentialPregnancyStep'
 import MedicalHistoryStep from './ProfileSetupSteps/MedicalHistoryStep'
 import LifestyleDemographicsStep from './ProfileSetupSteps/LifestyleDemographicsStep'
-import { createProfile } from '@/lib/api/profile'
+import { createProfile, updateProfile, Profile } from '@/lib/api/profile'
 
 interface ProfileSetupModalProps {
   open: boolean
   onClose: () => void
   onSave: () => void
+  initialProfile?: Profile | null
 }
 
 export default function ProfileSetupModal({
   open,
   onClose,
   onSave,
+  initialProfile,
 }: ProfileSetupModalProps) {
   const [activeStep, setActiveStep] = useState(0)
   const [saving, setSaving] = useState(false)
@@ -76,6 +79,44 @@ export default function ProfileSetupModal({
   const [workChemicalExposure, setWorkChemicalExposure] = useState(false)
   const [workChemicalExposureDetails, setWorkChemicalExposureDetails] = useState('')
   const [additionalNotes, setAdditionalNotes] = useState('')
+
+  // Pre-fill form when editing existing profile
+  useEffect(() => {
+    if (initialProfile && open) {
+      // Essential Pregnancy Information
+      setLastPeriod(initialProfile.last_period ? dayjs(initialProfile.last_period) : null)
+      setPreviousPregnancies(initialProfile.previous_pregnancies || 0)
+      setConceptionType((initialProfile.conception_type as ConceptionType) || '')
+      setIsMultiplePregnancy(initialProfile.pregnancy_type === 'multiple')
+      setNumberOfBabies(initialProfile.number_of_babies || 2)
+
+      // Medical History
+      setPreExistingConditions((initialProfile.pre_existing_conditions as PreExistingCondition[]) || [])
+      setPreviousPregnancyComplications((initialProfile.previous_pregnancy_complications as PregnancyComplication[]) || [])
+      setCurrentComplications(initialProfile.current_complications || '')
+      setMedications(initialProfile.medications || '')
+      setFoodAllergies(initialProfile.food_allergies || '')
+      setMedicationAllergies(initialProfile.medication_allergies || '')
+      setBloodType((initialProfile.blood_type as BloodType) || '')
+      setHasBloodClotHistory(initialProfile.has_blood_clot_history || false)
+
+      // Lifestyle & Demographics
+      setAge(initialProfile.age || '')
+      setWeightCategory((initialProfile.weight_category as WeightCategory) || '')
+      setSubstanceUseHistory((initialProfile.substance_use_history as SubstanceUse[]) || [])
+      setActivityLevel((initialProfile.activity_level as ActivityLevel) || '')
+      setHasExerciseRestrictions(initialProfile.has_exercise_restrictions || false)
+      setExerciseRestrictionsDetails(initialProfile.exercise_restrictions_details || '')
+      setDietaryRestrictions((initialProfile.dietary_restrictions as DietaryRestriction[]) || [])
+      setWorkPhysicalDemand((initialProfile.work_physical_demand as WorkPhysicalDemand) || '')
+      setWorkChemicalExposure(initialProfile.work_chemical_exposure || false)
+      setWorkChemicalExposureDetails(initialProfile.work_chemical_exposure_details || '')
+      setAdditionalNotes(initialProfile.additional_notes || '')
+    } else if (!open) {
+      // Reset form when modal is closed
+      setActiveStep(0)
+    }
+  }, [initialProfile, open])
 
   const isStepValid = (step: number): boolean => {
     switch (step) {
@@ -153,7 +194,13 @@ export default function ProfileSetupModal({
       }
 
       // Save profile via API
-      await createProfile(profileData)
+      if (initialProfile) {
+        // Update existing profile
+        await updateProfile(profileData)
+      } else {
+        // Create new profile
+        await createProfile(profileData)
+      }
 
       // Call the onSave callback to close modal
       onSave()

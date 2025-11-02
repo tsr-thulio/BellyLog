@@ -149,13 +149,49 @@ export const dashboardStyles = {
     borderRadius: 3,
     background: 'white',
     boxShadow: '0 4px 20px rgba(102, 126, 234, 0.1)',
-    transition: 'all 0.3s ease',
     border: '1px solid rgba(102, 126, 234, 0.1)',
+    width: '100%',
+    height: '100%',
+  } as SxProps<Theme>,
+
+  flipCardContainer: {
+    perspective: '1000px',
+    height: '100%',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
     '&:hover': {
       transform: 'translateY(-8px)',
-      boxShadow: '0 12px 40px rgba(102, 126, 234, 0.2)',
-      borderColor: '#667eea',
     },
+  } as SxProps<Theme>,
+
+  flipCardInner: (isFlipped: boolean) => ({
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+    minHeight: '150px',
+    textAlign: 'center',
+    transition: 'transform 0.6s',
+    transformStyle: 'preserve-3d',
+    transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+  }) as SxProps<Theme>,
+
+  flipCardFront: {
+    backfaceVisibility: 'hidden',
+    WebkitBackfaceVisibility: 'hidden',
+  } as SxProps<Theme>,
+
+  flipCardBack: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backfaceVisibility: 'hidden',
+    WebkitBackfaceVisibility: 'hidden',
+    transform: 'rotateY(180deg)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   } as SxProps<Theme>,
 
   statIcon: {

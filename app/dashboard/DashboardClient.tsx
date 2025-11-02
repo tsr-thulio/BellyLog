@@ -18,15 +18,13 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import PregnantWomanIcon from '@mui/icons-material/PregnantWoman'
-import FavoriteIcon from '@mui/icons-material/Favorite'
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
-import BabyChangingStationIcon from '@mui/icons-material/BabyChangingStation'
 import { dashboardStyles } from './DashboardClient.styles'
 import ProfileSetupModal from './components/ProfileSetupModal'
 import { getProfile, Profile } from '@/lib/api/profile'
 import { executePrompt as executeClaudePrompt } from '@/lib/api/claude'
 import { executePrompt as executeGroqPrompt } from '@/lib/api/groq'
 import { CircularProgress } from '@mui/material'
+import { PREGNANCY_CONSTANTS } from '@/constants/profile'
 
 interface DashboardClientProps {
   user: User
@@ -42,6 +40,23 @@ function calculatePregnancyWeeks(lastPeriod: string | Date | null): number {
   return Math.floor(diffDays / 7)
 }
 
+// Helper function to calculate days remaining until due date
+function calculateDaysToGo(lastPeriod: string | Date | null): number {
+  if (!lastPeriod) return 0
+  const lastPeriodDate = new Date(lastPeriod)
+  const dueDate = new Date(lastPeriodDate.getTime() + (PREGNANCY_CONSTANTS.FULL_TERM_DAYS * 24 * 60 * 60 * 1000))
+  const today = new Date()
+  const diffTime = dueDate.getTime() - today.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  return Math.max(0, diffDays) // Return 0 if already past due date
+}
+
+// Helper function to calculate weeks remaining until due date
+function calculateWeeksLeft(lastPeriod: string | Date | null): number {
+  const daysToGo = calculateDaysToGo(lastPeriod)
+  return Math.ceil(daysToGo / 7)
+}
+
 export default function DashboardClient({ user }: DashboardClientProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [loading, setLoading] = useState(false)
@@ -49,6 +64,21 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   const [checkingProfile, setCheckingProfile] = useState(true)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [pregnancyWeeks, setPregnancyWeeks] = useState(0)
+  const [daysToGo, setDaysToGo] = useState(0)
+  const [weeksLeft, setWeeksLeft] = useState(0)
+  const [fetusSize, setFetusSize] = useState<string>('...')
+  const [fetusSizeEmoji, setFetusSizeEmoji] = useState<string>('🌱')
+  const [loadingFetusSize, setLoadingFetusSize] = useState(false)
+  const [organDevelopment, setOrganDevelopment] = useState<string>('...')
+  const [organDevelopmentEmoji, setOrganDevelopmentEmoji] = useState<string>('🫀')
+  const [loadingOrganDevelopment, setLoadingOrganDevelopment] = useState(false)
+  const [flippedCards, setFlippedCards] = useState<{[key: string]: boolean}>({
+    weeksAlong: false,
+    daysToGo: false,
+    weeksLeft: false,
+    babySize: false,
+    developingOrgan: false,
+  })
   const [aiResponses, setAiResponses] = useState<{
     gestationWeek?: { claude?: string; groq?: string }
     babySize?: { claude?: string; groq?: string }
@@ -74,6 +104,14 @@ export default function DashboardClient({ user }: DashboardClientProps) {
           // Calculate pregnancy weeks
           const weeks = calculatePregnancyWeeks(fetchedProfile.last_period)
           setPregnancyWeeks(weeks)
+          // Calculate days to go and weeks left
+          const days = calculateDaysToGo(fetchedProfile.last_period)
+          setDaysToGo(days)
+          const weeksRemaining = calculateWeeksLeft(fetchedProfile.last_period)
+          setWeeksLeft(weeksRemaining)
+          // Fetch fetus size and organ development from AI
+          fetchFetusSize(weeks)
+          fetchOrganDevelopment(weeks)
         }
       } catch (error) {
         console.error('Error checking profile:', error)
@@ -96,6 +134,11 @@ export default function DashboardClient({ user }: DashboardClientProps) {
     setAnchorEl(null)
   }
 
+  const handleEditProfile = () => {
+    setShowProfileSetup(true)
+    handleClose()
+  }
+
   const handleLogout = async () => {
     try {
       setLoading(true)
@@ -112,9 +155,18 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   }
 
   const handleProfileSetupClose = () => {
-    // Don't allow closing the modal without completing the profile
-    // Users must complete the profile setup
-    return
+    // Allow closing the modal if the profile is already completed (editing mode)
+    // Only prevent closing during initial setup
+    if (profile && profile.profile_completed) {
+      setShowProfileSetup(false)
+    }
+  }
+
+  const handleCardFlip = (cardKey: string) => {
+    setFlippedCards(prev => ({
+      ...prev,
+      [cardKey]: !prev[cardKey]
+    }))
   }
 
   const handleProfileSetupSave = async () => {
@@ -126,6 +178,13 @@ export default function DashboardClient({ user }: DashboardClientProps) {
       if (fetchedProfile?.last_period) {
         const weeks = calculatePregnancyWeeks(fetchedProfile.last_period)
         setPregnancyWeeks(weeks)
+        const days = calculateDaysToGo(fetchedProfile.last_period)
+        setDaysToGo(days)
+        const weeksRemaining = calculateWeeksLeft(fetchedProfile.last_period)
+        setWeeksLeft(weeksRemaining)
+        // Fetch updated fetus size and organ development
+        fetchFetusSize(weeks)
+        fetchOrganDevelopment(weeks)
       }
       setShowProfileSetup(false)
     } catch (error) {
@@ -160,6 +219,47 @@ export default function DashboardClient({ user }: DashboardClientProps) {
       alert(`Failed to get AI response from ${provider}. Please try again.`)
     } finally {
       setExecutingPrompt({ key: null, provider: null })
+    }
+  }
+
+  const fetchFetusSize = async (weeks: number) => {
+    if (weeks === 0) return
+
+    try {
+      setLoadingFetusSize(true)
+      const prompt = `For a pregnancy at week ${weeks} of gestation, what is the approximate size of the fetus? Respond with ONLY a JSON object in this exact format: {"item": "item_name", "emoji": "emoji"}. For example: {"item": "blueberry", "emoji": "🫐"}. Use a common food or object comparison and include an appropriate emoji. Do not include any other text.`
+
+      const response = await executeGroqPrompt(prompt)
+      const parsed = JSON.parse(response.trim())
+      setFetusSize(parsed.item)
+      setFetusSizeEmoji(parsed.emoji)
+    } catch (error) {
+      console.error('Error fetching fetus size:', error)
+      setFetusSize('N/A')
+      setFetusSizeEmoji('❓')
+    } finally {
+      setLoadingFetusSize(false)
+    }
+  }
+
+  const fetchOrganDevelopment = async (weeks: number) => {
+    if (weeks === 0) return
+
+    try {
+      setLoadingOrganDevelopment(true)
+      const prompt = `For a pregnancy at week ${weeks} of gestation, what major organ or body system is primarily developing? Respond with ONLY a JSON object in this exact format: {"organ": "organ_name", "emoji": "emoji"}. For example: {"organ": "Heart", "emoji": "🫀"} or {"organ": "Brain", "emoji": "🧠"}. Use a short organ/system name (1-2 words) and an appropriate emoji. Do not include any other text.`
+      console.log(prompt)
+      const response = await executeGroqPrompt(prompt)
+      const parsed = JSON.parse(response.trim())
+      console.log('heyy', parsed)
+      setOrganDevelopment(parsed.organ)
+      setOrganDevelopmentEmoji(parsed.emoji)
+    } catch (error) {
+      console.error('Error fetching organ development:', error)
+      setOrganDevelopment('N/A')
+      setOrganDevelopmentEmoji('❓')
+    } finally {
+      setLoadingOrganDevelopment(false)
     }
   }
 
@@ -232,6 +332,9 @@ What organ or body system is the baby primarily developing this week? Provide a 
               open={Boolean(anchorEl)}
               onClose={handleClose}
             >
+              <MenuItem onClick={handleEditProfile}>
+                Edit Profile
+              </MenuItem>
               <MenuItem onClick={handleLogout} disabled={loading}>
                 {loading ? 'Logging out... 👋' : 'Logout'}
               </MenuItem>
@@ -256,21 +359,93 @@ What organ or body system is the baby primarily developing this week? Provide a 
 
         {/* Stats Grid */}
         <Box sx={dashboardStyles.statsGrid}>
-          <Card sx={dashboardStyles.statCard}>
-            <FavoriteIcon sx={dashboardStyles.statIcon} />
-            <Typography sx={dashboardStyles.statValue}>28</Typography>
-            <Typography sx={dashboardStyles.statLabel}>Weeks Along</Typography>
-          </Card>
-          <Card sx={dashboardStyles.statCard}>
-            <CalendarTodayIcon sx={dashboardStyles.statIcon} />
-            <Typography sx={dashboardStyles.statValue}>84</Typography>
-            <Typography sx={dashboardStyles.statLabel}>Days to Go</Typography>
-          </Card>
-          <Card sx={dashboardStyles.statCard}>
-            <BabyChangingStationIcon sx={dashboardStyles.statIcon} />
-            <Typography sx={dashboardStyles.statValue}>12</Typography>
-            <Typography sx={dashboardStyles.statLabel}>Weeks Left</Typography>
-          </Card>
+          {/* Card 1: Weeks Along */}
+          <Box sx={dashboardStyles.flipCardContainer} onClick={() => handleCardFlip('weeksAlong')}>
+            <Box sx={dashboardStyles.flipCardInner(flippedCards.weeksAlong)}>
+              <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardFront]}>
+                <Typography sx={{ fontSize: '4rem', mb: 1 }}>🤰</Typography>
+                <Typography sx={dashboardStyles.statValue}>{pregnancyWeeks}</Typography>
+                <Typography sx={dashboardStyles.statLabel}>Weeks Along</Typography>
+              </Card>
+              <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardBack]}>
+                <Typography variant="body2" color="text.secondary">
+                  Detailed information coming soon
+                </Typography>
+              </Card>
+            </Box>
+          </Box>
+
+          {/* Card 2: Days to Go */}
+          <Box sx={dashboardStyles.flipCardContainer} onClick={() => handleCardFlip('daysToGo')}>
+            <Box sx={dashboardStyles.flipCardInner(flippedCards.daysToGo)}>
+              <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardFront]}>
+                <Typography sx={{ fontSize: '4rem', mb: 1 }}>⏳</Typography>
+                <Typography sx={dashboardStyles.statValue}>{daysToGo}</Typography>
+                <Typography sx={dashboardStyles.statLabel}>Days to Go</Typography>
+              </Card>
+              <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardBack]}>
+                <Typography variant="body2" color="text.secondary">
+                  Detailed information coming soon
+                </Typography>
+              </Card>
+            </Box>
+          </Box>
+
+          {/* Card 3: Weeks Left */}
+          <Box sx={dashboardStyles.flipCardContainer} onClick={() => handleCardFlip('weeksLeft')}>
+            <Box sx={dashboardStyles.flipCardInner(flippedCards.weeksLeft)}>
+              <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardFront]}>
+                <Typography sx={{ fontSize: '4rem', mb: 1 }}>👶</Typography>
+                <Typography sx={dashboardStyles.statValue}>{weeksLeft}</Typography>
+                <Typography sx={dashboardStyles.statLabel}>Weeks Left</Typography>
+              </Card>
+              <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardBack]}>
+                <Typography variant="body2" color="text.secondary">
+                  Detailed information coming soon
+                </Typography>
+              </Card>
+            </Box>
+          </Box>
+
+          {/* Card 4: Baby Size */}
+          <Box sx={dashboardStyles.flipCardContainer} onClick={() => handleCardFlip('babySize')}>
+            <Box sx={dashboardStyles.flipCardInner(flippedCards.babySize)}>
+              <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardFront]}>
+                <Typography sx={{ fontSize: '4rem', mb: 1 }}>
+                  {loadingFetusSize ? '...' : fetusSizeEmoji}
+                </Typography>
+                <Typography sx={dashboardStyles.statValue}>
+                  {loadingFetusSize ? '...' : fetusSize}
+                </Typography>
+                <Typography sx={dashboardStyles.statLabel}>Is the size of your little one this week</Typography>
+              </Card>
+              <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardBack]}>
+                <Typography variant="body2" color="text.secondary">
+                  Detailed information coming soon
+                </Typography>
+              </Card>
+            </Box>
+          </Box>
+
+          {/* Card 5: Developing Organ */}
+          <Box sx={dashboardStyles.flipCardContainer} onClick={() => handleCardFlip('developingOrgan')}>
+            <Box sx={dashboardStyles.flipCardInner(flippedCards.developingOrgan)}>
+              <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardFront]}>
+                <Typography sx={{ fontSize: '4rem', mb: 1 }}>
+                  {loadingOrganDevelopment ? '...' : organDevelopmentEmoji}
+                </Typography>
+                <Typography sx={dashboardStyles.statValue}>
+                  {loadingOrganDevelopment ? '...' : organDevelopment}
+                </Typography>
+                <Typography sx={dashboardStyles.statLabel}>Is the Organ forming now</Typography>
+              </Card>
+              <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardBack]}>
+                <Typography variant="body2" color="text.secondary">
+                  Detailed information coming soon
+                </Typography>
+              </Card>
+            </Box>
+          </Box>
         </Box>
 
         {/* Placeholder for future content */}
@@ -550,6 +725,7 @@ What organ or body system is the baby primarily developing this week? Provide a 
         open={showProfileSetup}
         onClose={handleProfileSetupClose}
         onSave={handleProfileSetupSave}
+        initialProfile={profile}
       />
     </Box>
   )
