@@ -216,4 +216,57 @@ export const dashboardStyles = {
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
   } as SxProps<Theme>,
+
+  promptsSection: {
+    mt: 4,
+    width: '100%',
+  } as SxProps<Theme>,
+
+  promptsSectionTitle: {
+    fontWeight: 700,
+    fontSize: '1.3rem',
+    mb: 3,
+    textAlign: 'center',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    backgroundClip: 'text',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+  } as SxProps<Theme>,
+
+  promptCard: {
+    p: 3,
+    borderRadius: 3,
+    background: 'white',
+    boxShadow: '0 4px 20px rgba(102, 126, 234, 0.1)',
+    border: '1px solid rgba(102, 126, 234, 0.2)',
+    mb: 2,
+    transition: 'all 0.3s ease',
+    '&:hover': {
+      transform: 'translateX(8px)',
+      boxShadow: '0 8px 30px rgba(102, 126, 234, 0.2)',
+      borderColor: '#667eea',
+    },
+  } as SxProps<Theme>,
+
+  promptTitle: {
+    fontWeight: 700,
+    fontSize: '1.1rem',
+    mb: 2,
+    color: '#667eea',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1,
+  } as SxProps<Theme>,
+
+  promptText: {
+    fontSize: '0.95rem',
+    lineHeight: 1.7,
+    color: 'text.secondary',
+    fontFamily: 'monospace',
+    background: 'rgba(102, 126, 234, 0.05)',
+    p: 2,
+    borderRadius: 2,
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+  } as SxProps<Theme>,
 } as const
