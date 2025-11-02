@@ -15,9 +15,10 @@ import {
 import { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import PregnantWomanIcon from '@mui/icons-material/PregnantWoman'
 import { dashboardStyles } from './DashboardClient.styles'
+import ProfileSetupModal from './components/ProfileSetupModal'
 
 interface DashboardClientProps {
   user: User
@@ -26,8 +27,35 @@ interface DashboardClientProps {
 export default function DashboardClient({ user }: DashboardClientProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [loading, setLoading] = useState(false)
+  const [showProfileSetup, setShowProfileSetup] = useState(false)
+  const [checkingProfile, setCheckingProfile] = useState(true)
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    const checkProfile = async () => {
+      try {
+        // Check if user has a profile
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+
+        if (error || !profile || !profile.profile_completed) {
+          setShowProfileSetup(true)
+        }
+      } catch (error) {
+        console.error('Error checking profile:', error)
+        // Show modal if there's an error (safer to assume profile doesn't exist)
+        setShowProfileSetup(true)
+      } finally {
+        setCheckingProfile(false)
+      }
+    }
+
+    checkProfile()
+  }, [user.id, supabase])
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget)
@@ -49,6 +77,26 @@ export default function DashboardClient({ user }: DashboardClientProps) {
     } finally {
       setLoading(false)
       handleClose()
+    }
+  }
+
+  const handleProfileSetupClose = () => {
+    // Don't allow closing the modal without completing the profile
+    // Users must complete the profile setup
+    return
+  }
+
+  const handleProfileSetupSave = async () => {
+    try {
+      setLoading(true)
+      // TODO: Save profile data
+      // For now, just close the modal
+      setShowProfileSetup(false)
+    } catch (error) {
+      console.error('Error saving profile:', error)
+      alert('Error saving profile. Please try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -127,6 +175,13 @@ export default function DashboardClient({ user }: DashboardClientProps) {
           </Box>
         </Box>
       </Container>
+
+      {/* Profile Setup Modal */}
+      <ProfileSetupModal
+        open={showProfileSetup}
+        onClose={handleProfileSetupClose}
+        onSave={handleProfileSetupSave}
+      />
     </Box>
   )
 }
