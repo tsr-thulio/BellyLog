@@ -24,12 +24,14 @@ import {
   ActivityLevel,
   DietaryRestriction,
   WorkPhysicalDemand,
+  PregnancyType,
 } from '@/types/profile'
 import { PROFILE_SETUP_STEPS } from '@/constants/profile'
 import { profileSetupModalStyles } from './ProfileSetupModal.styles'
 import EssentialPregnancyStep from './ProfileSetupSteps/EssentialPregnancyStep'
 import MedicalHistoryStep from './ProfileSetupSteps/MedicalHistoryStep'
 import LifestyleDemographicsStep from './ProfileSetupSteps/LifestyleDemographicsStep'
+import { createProfile } from '@/lib/api/profile'
 
 interface ProfileSetupModalProps {
   open: boolean
@@ -43,6 +45,7 @@ export default function ProfileSetupModal({
   onSave,
 }: ProfileSetupModalProps) {
   const [activeStep, setActiveStep] = useState(0)
+  const [saving, setSaving] = useState(false)
 
   // Essential Pregnancy Information state
   const [lastPeriod, setLastPeriod] = useState<Dayjs | null>(null)
@@ -108,9 +111,57 @@ export default function ProfileSetupModal({
     setActiveStep((prevStep) => prevStep - 1)
   }
 
-  const handleSave = () => {
-    if (isStepValid(activeStep)) {
+  const handleSave = async () => {
+    if (!isStepValid(activeStep)) {
+      return
+    }
+
+    setSaving(true)
+
+    try {
+      // Prepare profile data
+      const profileData = {
+        // Essential Pregnancy Information
+        last_period: lastPeriod?.toDate().toISOString() || null,
+        previous_pregnancies: previousPregnancies,
+        conception_type: conceptionType || null,
+        pregnancy_type: isMultiplePregnancy ? PregnancyType.MULTIPLE : PregnancyType.SINGLE,
+        number_of_babies: isMultiplePregnancy ? numberOfBabies : 1,
+        // Medical History
+        pre_existing_conditions: preExistingConditions,
+        previous_pregnancy_complications: previousPregnancyComplications,
+        current_complications: currentComplications || null,
+        medications: medications || null,
+        food_allergies: foodAllergies || null,
+        medication_allergies: medicationAllergies || null,
+        blood_type: bloodType || null,
+        has_blood_clot_history: hasBloodClotHistory,
+        // Lifestyle & Demographics
+        age: age || null,
+        weight_category: weightCategory || null,
+        substance_use_history: substanceUseHistory,
+        activity_level: activityLevel || null,
+        has_exercise_restrictions: hasExerciseRestrictions,
+        exercise_restrictions_details: exerciseRestrictionsDetails || null,
+        dietary_restrictions: dietaryRestrictions,
+        work_physical_demand: workPhysicalDemand || null,
+        work_chemical_exposure: workChemicalExposure,
+        work_chemical_exposure_details: workChemicalExposureDetails || null,
+        additional_notes: additionalNotes || null,
+        // Mark profile as completed
+        profile_completed: true,
+      }
+
+      // Save profile via API
+      await createProfile(profileData)
+
+      // Call the onSave callback to close modal
       onSave()
+    } catch (error) {
+      console.error('Error saving profile:', error)
+      alert(error instanceof Error ? error.message : 'Failed to save profile. Please try again.')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -231,10 +282,10 @@ export default function ProfileSetupModal({
             onClick={handleSave}
             variant="contained"
             color="primary"
-            disabled={!isStepValid(activeStep)}
+            disabled={!isStepValid(activeStep) || saving}
             sx={profileSetupModalStyles.nextButton}
           >
-            Complete Setup! 🎯
+            {saving ? 'Saving...' : 'Complete Setup! 🎯'}
           </Button>
         ) : (
           <Button

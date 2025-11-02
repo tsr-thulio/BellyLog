@@ -19,6 +19,7 @@ import { useState, useEffect } from 'react'
 import PregnantWomanIcon from '@mui/icons-material/PregnantWoman'
 import { dashboardStyles } from './DashboardClient.styles'
 import ProfileSetupModal from './components/ProfileSetupModal'
+import { getProfile } from '@/lib/api/profile'
 
 interface DashboardClientProps {
   user: User
@@ -35,14 +36,10 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   useEffect(() => {
     const checkProfile = async () => {
       try {
-        // Check if user has a profile
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single()
+        // Check if user has a completed profile
+        const profile = await getProfile()
 
-        if (error || !profile || !profile.profile_completed) {
+        if (!profile || !profile.profile_completed) {
           setShowProfileSetup(true)
         }
       } catch (error) {
@@ -55,7 +52,8 @@ export default function DashboardClient({ user }: DashboardClientProps) {
     }
 
     checkProfile()
-  }, [user.id, supabase])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id])
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget)
