@@ -21,6 +21,8 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import { executePrompt as executeGroqPrompt } from '@/lib/api/groq'
 import { Profile } from '@/lib/api/profile'
+import { useTranslation } from 'react-i18next'
+import '@/lib/i18n/config'
 
 const MIN_WIDTH = 300
 const MIN_HEIGHT = 400
@@ -44,6 +46,7 @@ interface Message {
 }
 
 export default function ChatBot({ profile, pregnancyWeeks }: ChatBotProps) {
+  const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [chatWidth, setChatWidth] = useState(DEFAULT_WIDTH)
   const [chatHeight, setChatHeight] = useState(DEFAULT_HEIGHT)
@@ -51,7 +54,7 @@ export default function ChatBot({ profile, pregnancyWeeks }: ChatBotProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '0',
-      text: 'Hi! I\'m your pregnancy companion. Ask me anything about your pregnancy journey, symptoms, baby development, or general pregnancy advice!',
+      text: '', // Will be set by useEffect
       sender: 'bot',
       timestamp: new Date(),
     },
@@ -61,6 +64,17 @@ export default function ChatBot({ profile, pregnancyWeeks }: ChatBotProps) {
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set())
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const resizeStartRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null)
+
+  // Update welcome message when language changes
+  useEffect(() => {
+    setMessages((prev) => [
+      {
+        ...prev[0],
+        text: t('chatbot.welcome'),
+      },
+      ...prev.slice(1),
+    ])
+  }, [t])
 
   // Load saved chat size from localStorage
   useEffect(() => {
@@ -222,7 +236,7 @@ No other text, no markdown, just the JSON object. Remember to use the SAME LANGU
       console.error('ChatBot error:', error)
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: 'I\'m sorry, I\'m having trouble responding right now. Please try again in a moment.',
+        text: t('chatbot.error'),
         sender: 'bot',
         timestamp: new Date(),
       }
@@ -323,10 +337,10 @@ No other text, no markdown, just the JSON object. Remember to use the SAME LANGU
               </Avatar>
               <Box>
                 <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
-                  Pregnancy Assistant
+                  {t('chatbot.title')}
                 </Typography>
                 <Typography variant="caption" sx={{ opacity: 0.9 }}>
-                  Always here to help
+                  {t('chatbot.subtitle')}
                 </Typography>
               </Box>
             </Box>
@@ -419,7 +433,7 @@ No other text, no markdown, just the JSON object. Remember to use the SAME LANGU
                           },
                         }}
                       >
-                        {isExpanded ? 'Ver menos' : 'Ver resposta completa'}
+                        {isExpanded ? t('chatbot.viewLess') : t('chatbot.viewFull')}
                       </Button>
                     )}
 
@@ -457,7 +471,7 @@ No other text, no markdown, just the JSON object. Remember to use the SAME LANGU
                 >
                   <CircularProgress size={16} sx={{ color: '#667eea' }} />
                   <Typography variant="body2" color="text.secondary">
-                    Thinking...
+                    {t('chatbot.thinking')}
                   </Typography>
                 </Box>
               </Box>
@@ -482,7 +496,7 @@ No other text, no markdown, just the JSON object. Remember to use the SAME LANGU
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Ask me anything about your pregnancy..."
+                placeholder={t('chatbot.placeholder')}
                 disabled={isLoading}
                 variant="outlined"
                 size="small"

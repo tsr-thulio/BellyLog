@@ -6,6 +6,8 @@ import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew'
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
 import { executePrompt as executeGroqPrompt } from '@/lib/api/groq'
 import { Profile } from '@/lib/api/profile'
+import { useTranslation } from 'react-i18next'
+import '@/lib/i18n/config'
 
 interface PregnancyFactsCarouselProps {
   profile: Profile | null
@@ -18,6 +20,7 @@ export default function PregnancyFactsCarousel({
   pregnancyWeeks,
   factCount = 5,
 }: PregnancyFactsCarouselProps) {
+  const { i18n } = useTranslation()
   const [facts, setFacts] = useState<string[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -52,7 +55,14 @@ Profile Information:
 - Work physical demand: ${profile.work_physical_demand || 'Not specified'}
 `
 
-        const prompt = `Based on the following pregnancy information for a woman at week ${pregnancyWeeks} of pregnancy, provide the ${factCount} most relevant and important facts that she should know right now.
+        const currentLang = i18n.language || 'en'
+        const languageInstruction = currentLang === 'pt'
+          ? 'Responda em PORTUGUÊS BRASILEIRO. Todos os textos devem estar em português.'
+          : 'Respond in ENGLISH. All texts must be in English.'
+
+        const prompt = `${languageInstruction}
+
+Based on the following pregnancy information for a woman at week ${pregnancyWeeks} of pregnancy, provide the ${factCount} most relevant and important facts that she should know right now.
 
 ${profileInfo}
 
@@ -82,7 +92,7 @@ Do not include any other text outside the JSON array. Each fact should be 1-2 se
     }
 
     fetchFacts()
-  }, [profile, pregnancyWeeks, factCount])
+  }, [profile, pregnancyWeeks, factCount, i18n.language])
 
   // Auto-rotate every 15 seconds
   useEffect(() => {

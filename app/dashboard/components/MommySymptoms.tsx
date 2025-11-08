@@ -15,6 +15,8 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import WarningIcon from '@mui/icons-material/Warning'
 import { executePrompt as executeGroqPrompt } from '@/lib/api/groq'
 import { Profile } from '@/lib/api/profile'
+import { useTranslation } from 'react-i18next'
+import '@/lib/i18n/config'
 
 interface MommySymptomsProps {
   profile: Profile | null
@@ -33,6 +35,7 @@ export default function MommySymptoms({
   profile,
   pregnancyWeeks,
 }: MommySymptomsProps) {
+  const { t, i18n } = useTranslation()
   const [symptoms, setSymptoms] = useState<Symptom[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -84,7 +87,14 @@ Profile Information:
 - Previous pregnancy complications: ${profile.previous_pregnancy_complications?.join(', ') || 'None'}
 `
 
-        const prompt = `Based on the following pregnancy information for a woman at week ${pregnancyWeeks} of pregnancy, identify the 5-7 most likely symptoms she may be experiencing right now.
+        const currentLang = i18n.language || 'en'
+        const languageInstruction = currentLang === 'pt'
+          ? 'Responda em PORTUGUÊS BRASILEIRO. Todos os textos devem estar em português.'
+          : 'Respond in ENGLISH. All texts must be in English.'
+
+        const prompt = `${languageInstruction}
+
+Based on the following pregnancy information for a woman at week ${pregnancyWeeks} of pregnancy, identify the 5-7 most likely symptoms she may be experiencing right now.
 
 ${profileInfo}
 
@@ -169,7 +179,7 @@ Return 5-7 symptoms as a JSON array. Consider week ${pregnancyWeeks} and profile
     }
 
     fetchSymptoms()
-  }, [profile, pregnancyWeeks])
+  }, [profile, pregnancyWeeks, i18n.language])
 
   // Show loading state
   if (loading) {
@@ -312,7 +322,9 @@ Return 5-7 symptoms as a JSON array. Consider week ${pregnancyWeeks} and profile
                   fontWeight: 600,
                   textTransform: 'capitalize',
                 }}
-              />
+              >
+                {t(`symptoms.${symptom.normalityLevel.replace(' ', '')}`)}
+              </Chip>
             </Box>
           </AccordionSummary>
           <AccordionDetails
@@ -358,7 +370,7 @@ Return 5-7 symptoms as a JSON array. Consider week ${pregnancyWeeks} and profile
                 gap: 1,
               }}
             >
-              💡 Safe Ways to Help
+              💡 {t('symptoms.safeWaysToHelp')}
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               {symptom.remedies.map((remedy, remedyIndex) => (

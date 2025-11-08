@@ -21,7 +21,10 @@ import { useState, useEffect } from 'react'
 import PregnantWomanIcon from '@mui/icons-material/PregnantWoman'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
+import ReactCountryFlag from 'react-country-flag'
 import { dashboardStyles } from './DashboardClient.styles'
+import { useTranslation } from 'react-i18next'
+import '@/lib/i18n/config'
 import ProfileSetupModal from './components/ProfileSetupModal'
 import PregnancyFactsCarousel from './components/PregnancyFactsCarousel'
 import MommySymptoms from './components/MommySymptoms'
@@ -64,7 +67,9 @@ function calculateWeeksLeft(lastPeriod: string | Date | null): number {
 }
 
 export default function DashboardClient({ user }: DashboardClientProps) {
+  const { t, i18n } = useTranslation()
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+  const [langAnchorEl, setLangAnchorEl] = useState<null | HTMLElement>(null)
   const [loading, setLoading] = useState(false)
   const [showProfileSetup, setShowProfileSetup] = useState(false)
   const [checkingProfile, setCheckingProfile] = useState(true)
@@ -146,12 +151,58 @@ export default function DashboardClient({ user }: DashboardClientProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id])
 
+  // Refetch AI content when language changes
+  useEffect(() => {
+    if (!profile || pregnancyWeeks === 0) return
+
+    // Clear cached AI responses and details
+    setWeeksAlongDetails('')
+    setDaysToGoDetails('')
+    setWeeksLeftDetails('')
+    setFetusSizeDetails('Loading detailed information...')
+    setOrganDevelopmentDetails('Loading detailed information...')
+    setBabyAbilitiesDetails('Loading detailed information...')
+    setFetusSize('...')
+    setOrganDevelopment('...')
+    setBabyAbilities('...')
+
+    // Refetch all AI content
+    fetchFetusSize(pregnancyWeeks)
+    fetchOrganDevelopment(pregnancyWeeks)
+    fetchBabyAbilities(pregnancyWeeks)
+
+    // Reset flipped cards to show the front
+    setFlippedCards({
+      weeksAlong: false,
+      daysToGo: false,
+      weeksLeft: false,
+      babySize: false,
+      developingOrgan: false,
+      babyAbilities: false,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [i18n.language])
+
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget)
   }
 
   const handleClose = () => {
     setAnchorEl(null)
+  }
+
+  const handleLangMenu = (event: React.MouseEvent<HTMLElement>) => {
+    setLangAnchorEl(event.currentTarget)
+  }
+
+  const handleLangClose = () => {
+    setLangAnchorEl(null)
+  }
+
+  const handleLanguageChange = (lang: string) => {
+    i18n.changeLanguage(lang)
+    localStorage.setItem('language', lang)
+    handleLangClose()
   }
 
   const handleEditProfile = () => {
@@ -282,7 +333,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   }
 
   const fetchFetusSize = async (weeks: number) => {
-    if (weeks === 0 || (fetusSize !== '...' && fetusSizeDetails !== 'Loading detailed information...')) return // Don't fetch if already loaded
+    if (weeks === 0 || loadingFetusSize) return // Don't fetch if already loading
 
     try {
       setLoadingFetusSize(true)
@@ -297,7 +348,14 @@ Profile Information:
 - Current complications: ${profile.current_complications || 'None'}
 ` : ''
 
-      const prompt = `For a pregnancy at week ${weeks} of gestation, provide information about the baby's size.
+      const currentLang = i18n.language || 'en'
+      const languageInstruction = currentLang === 'pt'
+        ? 'Responda em PORTUGUÊS BRASILEIRO. Todos os textos devem estar em português.'
+        : 'Respond in ENGLISH. All texts must be in English.'
+
+      const prompt = `${languageInstruction}
+
+For a pregnancy at week ${weeks} of gestation, provide information about the baby's size.
 ${profileInfo}
 
 Respond with ONLY a JSON object in this exact format:
@@ -327,7 +385,7 @@ Do not include any other text outside the JSON object.`
   }
 
   const fetchOrganDevelopment = async (weeks: number) => {
-    if (weeks === 0 || (organDevelopment !== '...' && organDevelopmentDetails !== 'Loading detailed information...')) return // Don't fetch if already loaded
+    if (weeks === 0 || loadingOrganDevelopment) return // Don't fetch if already loading
 
     try {
       setLoadingOrganDevelopment(true)
@@ -343,7 +401,14 @@ Profile Information:
 - Medications: ${profile.medications || 'None'}
 ` : ''
 
-      const prompt = `For a pregnancy at week ${weeks} of gestation, provide information about the major organ or body system that is developing.
+      const currentLang = i18n.language || 'en'
+      const languageInstruction = currentLang === 'pt'
+        ? 'Responda em PORTUGUÊS BRASILEIRO. Todos os textos devem estar em português.'
+        : 'Respond in ENGLISH. All texts must be in English.'
+
+      const prompt = `${languageInstruction}
+
+For a pregnancy at week ${weeks} of gestation, provide information about the major organ or body system that is developing.
 ${profileInfo}
 
 Respond with ONLY a JSON object in this exact format:
@@ -373,7 +438,7 @@ Do not include any other text outside the JSON object.`
   }
 
   const fetchBabyAbilities = async (weeks: number) => {
-    if (weeks === 0 || (babyAbilities !== '...' && babyAbilitiesDetails !== 'Loading detailed information...')) return // Don't fetch if already loaded
+    if (weeks === 0 || loadingBabyAbilities) return // Don't fetch if already loading
 
     try {
       setLoadingBabyAbilities(true)
@@ -386,7 +451,14 @@ Profile Information:
 - Previous pregnancies: ${profile.previous_pregnancies || 0}
 ` : ''
 
-      const prompt = `For a pregnancy at week ${weeks} of gestation, provide information about what the baby can do now.
+      const currentLang = i18n.language || 'en'
+      const languageInstruction = currentLang === 'pt'
+        ? 'Responda em PORTUGUÊS BRASILEIRO. Todos os textos devem estar em português.'
+        : 'Respond in ENGLISH. All texts must be in English.'
+
+      const prompt = `${languageInstruction}
+
+For a pregnancy at week ${weeks} of gestation, provide information about what the baby can do now.
 ${profileInfo}
 
 Respond with ONLY a JSON object in this exact format:
@@ -429,7 +501,14 @@ Profile Information:
 - Activity level: ${profile.activity_level || 'Not specified'}
 ` : ''
 
-      const prompt = `Provide detailed information for parents who are at week ${weeks} of pregnancy, with an estimated due date of ${dueDate.toLocaleDateString()}.
+      const currentLang = i18n.language || 'en'
+      const languageInstruction = currentLang === 'pt'
+        ? 'Responda em PORTUGUÊS BRASILEIRO. Todos os textos devem estar em português.'
+        : 'Respond in ENGLISH. All texts must be in English.'
+
+      const prompt = `${languageInstruction}
+
+Provide detailed information for parents who are at week ${weeks} of pregnancy, with an estimated due date of ${dueDate.toLocaleDateString()}.
 ${profileInfo}
 
 Provide warm, encouraging, and informative content (150-200 words) that includes:
@@ -464,7 +543,14 @@ Profile Information:
 - Has exercise restrictions: ${profile.has_exercise_restrictions ? 'Yes' : 'No'}
 ` : ''
 
-      const prompt = `Provide detailed information for parents who have ${days} days remaining until their due date (${dueDate.toLocaleDateString()}).
+      const currentLang = i18n.language || 'en'
+      const languageInstruction = currentLang === 'pt'
+        ? 'Responda em PORTUGUÊS BRASILEIRO. Todos os textos devem estar em português.'
+        : 'Respond in ENGLISH. All texts must be in English.'
+
+      const prompt = `${languageInstruction}
+
+Provide detailed information for parents who have ${days} days remaining until their due date (${dueDate.toLocaleDateString()}).
 ${profileInfo}
 
 Provide warm, encouraging, and informative content (150-200 words) that includes:
@@ -500,7 +586,14 @@ Profile Information:
 - Current complications: ${profile.current_complications || 'None'}
 ` : ''
 
-      const prompt = `Provide detailed information for parents who have ${weeksRemaining} weeks remaining until their due date (${dueDate.toLocaleDateString()}).
+      const currentLang = i18n.language || 'en'
+      const languageInstruction = currentLang === 'pt'
+        ? 'Responda em PORTUGUÊS BRASILEIRO. Todos os textos devem estar em português.'
+        : 'Respond in ENGLISH. All texts must be in English.'
+
+      const prompt = `${languageInstruction}
+
+Provide detailed information for parents who have ${weeksRemaining} weeks remaining until their due date (${dueDate.toLocaleDateString()}).
 ${profileInfo}
 
 Provide warm, encouraging, and informative content (150-200 words) that includes:
@@ -563,8 +656,61 @@ What organ or body system is the baby primarily developing this week? Provide a 
         <Toolbar>
           <PregnantWomanIcon sx={dashboardStyles.pregnantIcon} />
           <Typography sx={dashboardStyles.title}>
-            BellyLog ✨
+            {t('app.name')} ✨
           </Typography>
+          <Box sx={{ flexGrow: 1 }} />
+          <IconButton
+            onClick={handleLangMenu}
+            sx={{
+              color: 'white',
+              mr: 2,
+              '&:hover': {
+                bgcolor: 'rgba(255, 255, 255, 0.1)',
+              },
+              padding: '8px',
+            }}
+          >
+            <ReactCountryFlag
+              countryCode={i18n.language === 'pt' ? 'BR' : 'US'}
+              svg
+              style={{
+                width: '1.2em',
+                height: '1.2em',
+              }}
+            />
+          </IconButton>
+          <Menu
+            anchorEl={langAnchorEl}
+            open={Boolean(langAnchorEl)}
+            onClose={handleLangClose}
+          >
+            <MenuItem onClick={() => handleLanguageChange('en')} selected={i18n.language === 'en'}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <ReactCountryFlag
+                  countryCode="US"
+                  svg
+                  style={{
+                    width: '1.5em',
+                    height: '1.5em',
+                  }}
+                />
+                <span>English</span>
+              </Box>
+            </MenuItem>
+            <MenuItem onClick={() => handleLanguageChange('pt')} selected={i18n.language === 'pt'}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <ReactCountryFlag
+                  countryCode="BR"
+                  svg
+                  style={{
+                    width: '1.5em',
+                    height: '1.5em',
+                  }}
+                />
+                <span>Português</span>
+              </Box>
+            </MenuItem>
+          </Menu>
           <Box sx={dashboardStyles.userBox}>
             <Button
               onClick={handleMenu}
@@ -592,10 +738,10 @@ What organ or body system is the baby primarily developing this week? Provide a 
               onClose={handleClose}
             >
               <MenuItem onClick={handleEditProfile}>
-                Edit Profile
+                {t('nav.editProfile')}
               </MenuItem>
               <MenuItem onClick={handleLogout} disabled={loading}>
-                {loading ? 'Logging out... 👋' : 'Logout'}
+                {loading ? t('nav.loggingOut') + ' 👋' : t('nav.logout')}
               </MenuItem>
             </Menu>
           </Box>
@@ -629,10 +775,10 @@ What organ or body system is the baby primarily developing this week? Provide a 
 
           <Box sx={dashboardStyles.welcomeContent}>
             <Typography variant="h3" sx={{ fontWeight: 800, mb: 2 }}>
-              Hey {user.user_metadata?.full_name?.split(' ')[0] || 'Mama'}! 👋
+              {t('welcome.greeting', { name: user.user_metadata?.full_name?.split(' ')[0] || 'Mama' })} 👋
             </Typography>
             <Typography variant="h6" sx={{ opacity: 0.95, fontWeight: 500, mb: factsExpanded ? 3 : 0 }}>
-              Welcome to your pregnancy journey dashboard
+              {t('welcome.subtitle')}
             </Typography>
 
             {/* Pregnancy Facts Carousel */}
@@ -676,7 +822,7 @@ What organ or body system is the baby primarily developing this week? Provide a 
                   WebkitTextFillColor: 'transparent',
                 }}
               >
-                Basic Information
+                {t('basicInfo.title')}
               </Typography>
               <IconButton
                 onClick={() => setCardsExpanded(!cardsExpanded)}
@@ -700,7 +846,7 @@ What organ or body system is the baby primarily developing this week? Provide a 
                 fontWeight: 500,
               }}
             >
-              Track your pregnancy milestones and your baby's development at week {pregnancyWeeks}
+              {t('basicInfo.subtitle', { week: pregnancyWeeks })}
             </Typography>
           </Box>
 
@@ -713,12 +859,12 @@ What organ or body system is the baby primarily developing this week? Provide a 
               <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardFront]}>
                 <Typography sx={{ fontSize: '4rem', mb: 1 }}>🤰</Typography>
                 <Typography sx={dashboardStyles.statValue}>{pregnancyWeeks}</Typography>
-                <Typography sx={dashboardStyles.statLabel}>Weeks Along</Typography>
+                <Typography sx={dashboardStyles.statLabel}>{t('basicInfo.weeksAlong')}</Typography>
               </Card>
               <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardBack]}>
                 <Box sx={{ p: 2, overflowY: 'auto', maxHeight: '100%' }}>
                   <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: '#667eea' }}>
-                    Week {pregnancyWeeks} Journey
+                    {t('basicInfo.weekJourney', { week: pregnancyWeeks })}
                   </Typography>
                   <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary' }}>
                     {weeksAlongDetails || 'Loading detailed information...'}
@@ -734,12 +880,12 @@ What organ or body system is the baby primarily developing this week? Provide a 
               <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardFront]}>
                 <Typography sx={{ fontSize: '4rem', mb: 1 }}>⏳</Typography>
                 <Typography sx={dashboardStyles.statValue}>{daysToGo}</Typography>
-                <Typography sx={dashboardStyles.statLabel}>Days to Go</Typography>
+                <Typography sx={dashboardStyles.statLabel}>{t('basicInfo.daysToGo')}</Typography>
               </Card>
               <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardBack]}>
                 <Box sx={{ p: 2, overflowY: 'auto', maxHeight: '100%' }}>
                   <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: '#667eea' }}>
-                    Countdown to Baby
+                    {t('basicInfo.countdownToBaby')}
                   </Typography>
                   <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary' }}>
                     {daysToGoDetails || 'Loading detailed information...'}
@@ -755,12 +901,12 @@ What organ or body system is the baby primarily developing this week? Provide a 
               <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardFront]}>
                 <Typography sx={{ fontSize: '4rem', mb: 1 }}>👶</Typography>
                 <Typography sx={dashboardStyles.statValue}>{weeksLeft}</Typography>
-                <Typography sx={dashboardStyles.statLabel}>Weeks Left</Typography>
+                <Typography sx={dashboardStyles.statLabel}>{t('basicInfo.weeksLeft')}</Typography>
               </Card>
               <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardBack]}>
                 <Box sx={{ p: 2, overflowY: 'auto', maxHeight: '100%' }}>
                   <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: '#667eea' }}>
-                    Final Weeks Ahead
+                    {t('basicInfo.finalWeeksAhead')}
                   </Typography>
                   <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary' }}>
                     {weeksLeftDetails || 'Loading detailed information...'}
@@ -780,12 +926,12 @@ What organ or body system is the baby primarily developing this week? Provide a 
                 <Typography sx={dashboardStyles.statValue}>
                   {loadingFetusSize ? '...' : fetusSize}
                 </Typography>
-                <Typography sx={dashboardStyles.statLabel}>Is the size of your little one this week</Typography>
+                <Typography sx={dashboardStyles.statLabel}>{t('basicInfo.babySize')}</Typography>
               </Card>
               <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardBack]}>
                 <Box sx={{ p: 2, overflowY: 'auto', maxHeight: '100%' }}>
                   <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: '#667eea' }}>
-                    Baby Size Details
+                    {t('basicInfo.babySizeDetails')}
                   </Typography>
                   <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary' }}>
                     {fetusSizeDetails}
@@ -805,12 +951,12 @@ What organ or body system is the baby primarily developing this week? Provide a 
                 <Typography sx={dashboardStyles.statValue}>
                   {loadingOrganDevelopment ? '...' : organDevelopment}
                 </Typography>
-                <Typography sx={dashboardStyles.statLabel}>Is the Organ forming now</Typography>
+                <Typography sx={dashboardStyles.statLabel}>{t('basicInfo.developingOrgan')}</Typography>
               </Card>
               <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardBack]}>
                 <Box sx={{ p: 2, overflowY: 'auto', maxHeight: '100%' }}>
                   <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: '#667eea' }}>
-                    Organ Development Details
+                    {t('basicInfo.organDevelopmentDetails')}
                   </Typography>
                   <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary' }}>
                     {organDevelopmentDetails}
@@ -830,12 +976,12 @@ What organ or body system is the baby primarily developing this week? Provide a 
                 <Typography sx={dashboardStyles.statValue}>
                   {loadingBabyAbilities ? '...' : babyAbilities}
                 </Typography>
-                <Typography sx={dashboardStyles.statLabel}>What baby can do now</Typography>
+                <Typography sx={dashboardStyles.statLabel}>{t('basicInfo.babyAbilities')}</Typography>
               </Card>
               <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardBack]}>
                 <Box sx={{ p: 2, overflowY: 'auto', maxHeight: '100%' }}>
                   <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: '#667eea' }}>
-                    Baby's Abilities
+                    {t('basicInfo.babyAbilitiesDetails')}
                   </Typography>
                   <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary' }}>
                     {babyAbilitiesDetails}
@@ -878,7 +1024,7 @@ What organ or body system is the baby primarily developing this week? Provide a 
                   WebkitTextFillColor: 'transparent',
                 }}
               >
-                Mommy Symptoms
+                {t('symptoms.title')}
               </Typography>
               <IconButton
                 onClick={() => setSymptomsExpanded(!symptomsExpanded)}
@@ -902,7 +1048,7 @@ What organ or body system is the baby primarily developing this week? Provide a 
                 fontWeight: 500,
               }}
             >
-              Personalized insights based on your week {pregnancyWeeks} journey and unique profile
+              {t('symptoms.subtitle', { week: pregnancyWeeks })}
             </Typography>
           </Box>
 
@@ -925,13 +1071,13 @@ What organ or body system is the baby primarily developing this week? Provide a 
         >
           <Box sx={dashboardStyles.placeholderBox}>
             <Typography sx={dashboardStyles.comingSoonText}>
-              More Amazing Features Coming Soon! 🎉
+              {t('comingSoon.title')}
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-              We're building something special for you and your baby
+              {t('comingSoon.subtitle')}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Track appointments • Monitor symptoms • Connect with community • And so much more!
+              {t('comingSoon.features')}
             </Typography>
           </Box>
         </Box>

@@ -1,0 +1,60 @@
+{
+  "app": {
+    "name": "BellyLog"
+  },
+  "nav": {
+    "editProfile": "Edit Profile",
+    "logout": "Logout",
+    "loggingOut": "Logging out..."
+  },
+  "welcome": {
+    "greeting": "Hey {{name}}!",
+    "subtitle": "Welcome to your pregnancy journey dashboard"
+  },
+  "facts": {
+    "title": "Pregnancy Facts",
+    "loading": "Loading facts..."
+  },
+  "basicInfo": {
+    "title": "Basic Information",
+    "subtitle": "Track your pregnancy milestones and your baby's development at week {{week}}",
+    "weeksAlong": "Weeks Along",
+    "daysToGo": "Days to Go",
+    "weeksLeft": "Weeks Left",
+    "babySize": "Is the size of your little one this week",
+    "developingOrgan": "Is the Organ forming now",
+    "babyAbilities": "What baby can do now",
+    "weekJourney": "Week {{week}} Journey",
+    "countdownToBaby": "Countdown to Baby",
+    "finalWeeksAhead": "Final Weeks Ahead",
+    "babySizeDetails": "Baby Size Details",
+    "organDevelopmentDetails": "Organ Development Details",
+    "babyAbilitiesDetails": "Baby's Abilities",
+    "loadingInfo": "Loading detailed information..."
+  },
+  "symptoms": {
+    "title": "Mommy Symptoms",
+    "subtitle": "Personalized insights based on your week {{week}} journey and unique profile",
+    "veryCommon": "very common",
+    "common": "common",
+    "lessCommon": "less common",
+    "rare": "rare",
+    "safeWaysToHelp": "Safe Ways to Help",
+    "loading": "Loading symptoms..."
+  },
+  "chatbot": {
+    "title": "Pregnancy Assistant",
+    "subtitle": "Always here to help",
+    "placeholder": "Ask me anything about your pregnancy...",
+    "thinking": "Thinking...",
+    "welcome": "Hi! I'm your pregnancy companion. Ask me anything about your pregnancy journey, symptoms, baby development, or general pregnancy advice!",
+    "error": "I'm sorry, I'm having trouble responding right now. Please try again in a moment.",
+    "viewFull": "View full answer",
+    "viewLess": "View less"
+  },
+  "comingSoon": {
+    "title": "More Amazing Features Coming Soon!",
+    "subtitle": "We're building something special for you and your baby",
+    "features": "Track appointments • Monitor symptoms • Connect with community • And so much more!"
+  }
+}

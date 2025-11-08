@@ -1,0 +1,60 @@
+{
+  "app": {
+    "name": "BellyLog"
+  },
+  "nav": {
+    "editProfile": "Editar Perfil",
+    "logout": "Sair",
+    "loggingOut": "Saindo..."
+  },
+  "welcome": {
+    "greeting": "Olá {{name}}!",
+    "subtitle": "Bem-vinda ao painel da sua jornada de gravidez"
+  },
+  "facts": {
+    "title": "Fatos sobre Gravidez",
+    "loading": "Carregando fatos..."
+  },
+  "basicInfo": {
+    "title": "Informações Básicas",
+    "subtitle": "Acompanhe os marcos da sua gravidez e o desenvolvimento do seu bebê na semana {{week}}",
+    "weeksAlong": "Semanas de Gestação",
+    "daysToGo": "Dias Restantes",
+    "weeksLeft": "Semanas Restantes",
+    "babySize": "É o tamanho do seu pequeno esta semana",
+    "developingOrgan": "É o órgão em formação agora",
+    "babyAbilities": "O que o bebê pode fazer agora",
+    "weekJourney": "Jornada da Semana {{week}}",
+    "countdownToBaby": "Contagem Regressiva para o Bebê",
+    "finalWeeksAhead": "Últimas Semanas à Frente",
+    "babySizeDetails": "Detalhes do Tamanho do Bebê",
+    "organDevelopmentDetails": "Detalhes do Desenvolvimento do Órgão",
+    "babyAbilitiesDetails": "Habilidades do Bebê",
+    "loadingInfo": "Carregando informações detalhadas..."
+  },
+  "symptoms": {
+    "title": "Sintomas da Mamãe",
+    "subtitle": "Insights personalizados baseados na sua semana {{week}} e perfil único",
+    "veryCommon": "muito comum",
+    "common": "comum",
+    "lessCommon": "menos comum",
+    "rare": "raro",
+    "safeWaysToHelp": "Formas Seguras de Ajudar",
+    "loading": "Carregando sintomas..."
+  },
+  "chatbot": {
+    "title": "Assistente de Gravidez",
+    "subtitle": "Sempre aqui para ajudar",
+    "placeholder": "Pergunte-me qualquer coisa sobre sua gravidez...",
+    "thinking": "Pensando...",
+    "welcome": "Olá! Sou sua companheira de gravidez. Pergunte-me qualquer coisa sobre sua jornada, sintomas, desenvolvimento do bebê ou conselhos gerais sobre gravidez!",
+    "error": "Desculpe, estou tendo problemas para responder agora. Por favor, tente novamente em instantes.",
+    "viewFull": "Ver resposta completa",
+    "viewLess": "Ver menos"
+  },
+  "comingSoon": {
+    "title": "Mais Recursos Incríveis em Breve!",
+    "subtitle": "Estamos construindo algo especial para você e seu bebê",
+    "features": "Acompanhar consultas • Monitorar sintomas • Conectar com a comunidade • E muito mais!"
+  }
+}
