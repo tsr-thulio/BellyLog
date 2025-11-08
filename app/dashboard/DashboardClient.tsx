@@ -24,6 +24,8 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import { dashboardStyles } from './DashboardClient.styles'
 import ProfileSetupModal from './components/ProfileSetupModal'
 import PregnancyFactsCarousel from './components/PregnancyFactsCarousel'
+import MommySymptoms from './components/MommySymptoms'
+import ChatBot from './components/ChatBot'
 import { getProfile, Profile } from '@/lib/api/profile'
 import { executePrompt as executeClaudePrompt } from '@/lib/api/claude'
 import { executePrompt as executeGroqPrompt } from '@/lib/api/groq'
@@ -104,6 +106,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   }>({ key: null, provider: null })
   const [factsExpanded, setFactsExpanded] = useState(true)
   const [cardsExpanded, setCardsExpanded] = useState(true)
+  const [symptomsExpanded, setSymptomsExpanded] = useState(true)
   const router = useRouter()
   const supabase = createClient()
 
@@ -654,40 +657,51 @@ What organ or body system is the baby primarily developing this week? Provide a 
           }}
         >
           {/* Section Header */}
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              mb: 3,
-            }}
-          >
+          <Box sx={{ mb: 3 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                mb: 1,
+              }}
+            >
+              <Typography
+                variant="h5"
+                sx={{
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                Basic Information
+              </Typography>
+              <IconButton
+                onClick={() => setCardsExpanded(!cardsExpanded)}
+                sx={{
+                  color: '#667eea',
+                  bgcolor: 'rgba(102, 126, 234, 0.1)',
+                  '&:hover': {
+                    bgcolor: 'rgba(102, 126, 234, 0.2)',
+                  },
+                  transition: 'all 0.3s ease',
+                }}
+                aria-label={cardsExpanded ? 'Collapse basic information' : 'Expand basic information'}
+              >
+                {cardsExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              </IconButton>
+            </Box>
             <Typography
-              variant="h5"
+              variant="body2"
               sx={{
-                fontWeight: 700,
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+                color: 'text.secondary',
+                fontWeight: 500,
               }}
             >
-              Basic Information
+              Track your pregnancy milestones and your baby's development at week {pregnancyWeeks}
             </Typography>
-            <IconButton
-              onClick={() => setCardsExpanded(!cardsExpanded)}
-              sx={{
-                color: '#667eea',
-                bgcolor: 'rgba(102, 126, 234, 0.1)',
-                '&:hover': {
-                  bgcolor: 'rgba(102, 126, 234, 0.2)',
-                },
-                transition: 'all 0.3s ease',
-              }}
-              aria-label={cardsExpanded ? 'Collapse basic information' : 'Expand basic information'}
-            >
-              {cardsExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-            </IconButton>
           </Box>
 
           {/* Stats Grid */}
@@ -834,17 +848,92 @@ What organ or body system is the baby primarily developing this week? Provide a 
           </Collapse>
         </Box>
 
+        {/* Mommy Symptoms Section */}
+        <Box
+          sx={{
+            background: 'transparent',
+            borderRadius: 3,
+            p: 3,
+            mb: 4,
+            position: 'relative',
+          }}
+        >
+          {/* Section Header */}
+          <Box sx={{ mb: 3 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                mb: 1,
+              }}
+            >
+              <Typography
+                variant="h5"
+                sx={{
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                Mommy Symptoms
+              </Typography>
+              <IconButton
+                onClick={() => setSymptomsExpanded(!symptomsExpanded)}
+                sx={{
+                  color: '#667eea',
+                  bgcolor: 'rgba(102, 126, 234, 0.1)',
+                  '&:hover': {
+                    bgcolor: 'rgba(102, 126, 234, 0.2)',
+                  },
+                  transition: 'all 0.3s ease',
+                }}
+                aria-label={symptomsExpanded ? 'Collapse symptoms' : 'Expand symptoms'}
+              >
+                {symptomsExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              </IconButton>
+            </Box>
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'text.secondary',
+                fontWeight: 500,
+              }}
+            >
+              Personalized insights based on your week {pregnancyWeeks} journey and unique profile
+            </Typography>
+          </Box>
+
+          {/* Symptoms Content */}
+          <Collapse in={symptomsExpanded} timeout={600}>
+            <MommySymptoms
+              profile={profile}
+              pregnancyWeeks={pregnancyWeeks}
+            />
+          </Collapse>
+        </Box>
+
         {/* Placeholder for future content */}
-        <Box sx={dashboardStyles.placeholderBox}>
-          <Typography sx={dashboardStyles.comingSoonText}>
-            More Amazing Features Coming Soon! 🎉
-          </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-            We're building something special for you and your baby
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Track appointments • Monitor symptoms • Connect with community • And so much more!
-          </Typography>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            width: '100%',
+          }}
+        >
+          <Box sx={dashboardStyles.placeholderBox}>
+            <Typography sx={dashboardStyles.comingSoonText}>
+              More Amazing Features Coming Soon! 🎉
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+              We're building something special for you and your baby
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Track appointments • Monitor symptoms • Connect with community • And so much more!
+            </Typography>
+          </Box>
         </Box>
       </Container>
 
@@ -855,6 +944,9 @@ What organ or body system is the baby primarily developing this week? Provide a 
         onSave={handleProfileSetupSave}
         initialProfile={profile}
       />
+
+      {/* ChatBot */}
+      <ChatBot profile={profile} pregnancyWeeks={pregnancyWeeks} />
     </Box>
   )
 }
