@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   Card,
+  Collapse,
   Container,
   IconButton,
   Menu,
@@ -18,8 +19,11 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import PregnantWomanIcon from '@mui/icons-material/PregnantWoman'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import { dashboardStyles } from './DashboardClient.styles'
 import ProfileSetupModal from './components/ProfileSetupModal'
+import PregnancyFactsCarousel from './components/PregnancyFactsCarousel'
 import { getProfile, Profile } from '@/lib/api/profile'
 import { executePrompt as executeClaudePrompt } from '@/lib/api/claude'
 import { executePrompt as executeGroqPrompt } from '@/lib/api/groq'
@@ -64,20 +68,30 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   const [checkingProfile, setCheckingProfile] = useState(true)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [pregnancyWeeks, setPregnancyWeeks] = useState(0)
+  const [weeksAlongDetails, setWeeksAlongDetails] = useState<string>('')
   const [daysToGo, setDaysToGo] = useState(0)
+  const [daysToGoDetails, setDaysToGoDetails] = useState<string>('')
   const [weeksLeft, setWeeksLeft] = useState(0)
+  const [weeksLeftDetails, setWeeksLeftDetails] = useState<string>('')
   const [fetusSize, setFetusSize] = useState<string>('...')
   const [fetusSizeEmoji, setFetusSizeEmoji] = useState<string>('🌱')
+  const [fetusSizeDetails, setFetusSizeDetails] = useState<string>('Loading detailed information...')
   const [loadingFetusSize, setLoadingFetusSize] = useState(false)
   const [organDevelopment, setOrganDevelopment] = useState<string>('...')
   const [organDevelopmentEmoji, setOrganDevelopmentEmoji] = useState<string>('🫀')
+  const [organDevelopmentDetails, setOrganDevelopmentDetails] = useState<string>('Loading detailed information...')
   const [loadingOrganDevelopment, setLoadingOrganDevelopment] = useState(false)
+  const [babyAbilities, setBabyAbilities] = useState<string>('...')
+  const [babyAbilitiesEmoji, setBabyAbilitiesEmoji] = useState<string>('👂')
+  const [babyAbilitiesDetails, setBabyAbilitiesDetails] = useState<string>('Loading detailed information...')
+  const [loadingBabyAbilities, setLoadingBabyAbilities] = useState(false)
   const [flippedCards, setFlippedCards] = useState<{[key: string]: boolean}>({
     weeksAlong: false,
     daysToGo: false,
     weeksLeft: false,
     babySize: false,
     developingOrgan: false,
+    babyAbilities: false,
   })
   const [aiResponses, setAiResponses] = useState<{
     gestationWeek?: { claude?: string; groq?: string }
@@ -88,6 +102,8 @@ export default function DashboardClient({ user }: DashboardClientProps) {
     key: string | null
     provider: 'claude' | 'groq' | null
   }>({ key: null, provider: null })
+  const [factsExpanded, setFactsExpanded] = useState(true)
+  const [cardsExpanded, setCardsExpanded] = useState(true)
   const router = useRouter()
   const supabase = createClient()
 
@@ -109,9 +125,10 @@ export default function DashboardClient({ user }: DashboardClientProps) {
           setDaysToGo(days)
           const weeksRemaining = calculateWeeksLeft(fetchedProfile.last_period)
           setWeeksLeft(weeksRemaining)
-          // Fetch fetus size and organ development from AI
+          // Fetch fetus size, organ development, and baby abilities from AI
           fetchFetusSize(weeks)
           fetchOrganDevelopment(weeks)
+          fetchBabyAbilities(weeks)
         }
       } catch (error) {
         console.error('Error checking profile:', error)
@@ -163,6 +180,32 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   }
 
   const handleCardFlip = (cardKey: string) => {
+    const isCurrentlyFlipped = flippedCards[cardKey]
+
+    // If flipping to the back and details not loaded yet, fetch them
+    if (!isCurrentlyFlipped && profile?.last_period) {
+      const lastPeriodDate = new Date(profile.last_period)
+      const dueDate = new Date(lastPeriodDate.getTime() + (PREGNANCY_CONSTANTS.FULL_TERM_DAYS * 24 * 60 * 60 * 1000))
+
+      switch (cardKey) {
+        case 'weeksAlong':
+          if (!weeksAlongDetails) {
+            fetchWeeksAlongDetails(pregnancyWeeks, dueDate)
+          }
+          break
+        case 'daysToGo':
+          if (!daysToGoDetails) {
+            fetchDaysToGoDetails(daysToGo, dueDate)
+          }
+          break
+        case 'weeksLeft':
+          if (!weeksLeftDetails) {
+            fetchWeeksLeftDetails(weeksLeft, dueDate)
+          }
+          break
+      }
+    }
+
     setFlippedCards(prev => ({
       ...prev,
       [cardKey]: !prev[cardKey]
@@ -175,6 +218,18 @@ export default function DashboardClient({ user }: DashboardClientProps) {
       // Reload profile after save
       const fetchedProfile = await getProfile()
       setProfile(fetchedProfile)
+
+      // Clear cached details to force refetch with new profile data
+      setWeeksAlongDetails('')
+      setDaysToGoDetails('')
+      setWeeksLeftDetails('')
+      setFetusSizeDetails('Loading detailed information...')
+      setOrganDevelopmentDetails('Loading detailed information...')
+      setBabyAbilitiesDetails('Loading detailed information...')
+      setFetusSize('...')
+      setOrganDevelopment('...')
+      setBabyAbilities('...')
+
       if (fetchedProfile?.last_period) {
         const weeks = calculatePregnancyWeeks(fetchedProfile.last_period)
         setPregnancyWeeks(weeks)
@@ -182,9 +237,10 @@ export default function DashboardClient({ user }: DashboardClientProps) {
         setDaysToGo(days)
         const weeksRemaining = calculateWeeksLeft(fetchedProfile.last_period)
         setWeeksLeft(weeksRemaining)
-        // Fetch updated fetus size and organ development
+        // Fetch updated fetus size, organ development, and baby abilities
         fetchFetusSize(weeks)
         fetchOrganDevelopment(weeks)
+        fetchBabyAbilities(weeks)
       }
       setShowProfileSetup(false)
     } catch (error) {
@@ -223,43 +279,243 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   }
 
   const fetchFetusSize = async (weeks: number) => {
-    if (weeks === 0) return
+    if (weeks === 0 || (fetusSize !== '...' && fetusSizeDetails !== 'Loading detailed information...')) return // Don't fetch if already loaded
 
     try {
       setLoadingFetusSize(true)
-      const prompt = `For a pregnancy at week ${weeks} of gestation, what is the approximate size of the fetus? Respond with ONLY a JSON object in this exact format: {"item": "item_name", "emoji": "emoji"}. For example: {"item": "blueberry", "emoji": "🫐"}. Use a common food or object comparison and include an appropriate emoji. Do not include any other text.`
+
+      const profileInfo = profile ? `
+Profile Information:
+- Pregnancy type: ${profile.pregnancy_type || 'single'}
+- Number of babies: ${profile.number_of_babies || 1}
+- Mother's age: ${profile.age || 'Not specified'}
+- Previous pregnancies: ${profile.previous_pregnancies || 0}
+- Pre-existing conditions: ${profile.pre_existing_conditions?.join(', ') || 'None'}
+- Current complications: ${profile.current_complications || 'None'}
+` : ''
+
+      const prompt = `For a pregnancy at week ${weeks} of gestation, provide information about the baby's size.
+${profileInfo}
+
+Respond with ONLY a JSON object in this exact format:
+{
+  "item": "comparison object/food",
+  "emoji": "appropriate emoji",
+  "details": "Detailed information for parents (150-200 words). Include: current size and weight, what's happening this week, physical development milestones, what parents should know, and any relevant advice based on the profile information. Make it warm, encouraging, and informative."
+}
+
+Example: {"item": "blueberry", "emoji": "🫐", "details": "Your baby is now..."}
+
+Do not include any other text outside the JSON object.`
 
       const response = await executeGroqPrompt(prompt)
       const parsed = JSON.parse(response.trim())
       setFetusSize(parsed.item)
       setFetusSizeEmoji(parsed.emoji)
+      setFetusSizeDetails(parsed.details || 'Detailed information not available.')
     } catch (error) {
       console.error('Error fetching fetus size:', error)
       setFetusSize('N/A')
       setFetusSizeEmoji('❓')
+      setFetusSizeDetails('Unable to load detailed information. Please try again.')
     } finally {
       setLoadingFetusSize(false)
     }
   }
 
   const fetchOrganDevelopment = async (weeks: number) => {
-    if (weeks === 0) return
+    if (weeks === 0 || (organDevelopment !== '...' && organDevelopmentDetails !== 'Loading detailed information...')) return // Don't fetch if already loaded
 
     try {
       setLoadingOrganDevelopment(true)
-      const prompt = `For a pregnancy at week ${weeks} of gestation, what major organ or body system is primarily developing? Respond with ONLY a JSON object in this exact format: {"organ": "organ_name", "emoji": "emoji"}. For example: {"organ": "Heart", "emoji": "🫀"} or {"organ": "Brain", "emoji": "🧠"}. Use a short organ/system name (1-2 words) and an appropriate emoji. Do not include any other text.`
-      console.log(prompt)
+
+      const profileInfo = profile ? `
+Profile Information:
+- Pregnancy type: ${profile.pregnancy_type || 'single'}
+- Number of babies: ${profile.number_of_babies || 1}
+- Mother's age: ${profile.age || 'Not specified'}
+- Previous pregnancies: ${profile.previous_pregnancies || 0}
+- Pre-existing conditions: ${profile.pre_existing_conditions?.join(', ') || 'None'}
+- Current complications: ${profile.current_complications || 'None'}
+- Medications: ${profile.medications || 'None'}
+` : ''
+
+      const prompt = `For a pregnancy at week ${weeks} of gestation, provide information about the major organ or body system that is developing.
+${profileInfo}
+
+Respond with ONLY a JSON object in this exact format:
+{
+  "organ": "organ/system name (1-2 words)",
+  "emoji": "appropriate emoji",
+  "details": "Detailed information for parents (150-200 words). Include: which organ/system is developing, what's happening this week, why this development is important, what parents can do to support healthy development, and any relevant advice based on the profile information. Make it warm, encouraging, and educational."
+}
+
+Example: {"organ": "Heart", "emoji": "🫀", "details": "This week, your baby's heart..."}
+
+Do not include any other text outside the JSON object.`
+
       const response = await executeGroqPrompt(prompt)
       const parsed = JSON.parse(response.trim())
-      console.log('heyy', parsed)
       setOrganDevelopment(parsed.organ)
       setOrganDevelopmentEmoji(parsed.emoji)
+      setOrganDevelopmentDetails(parsed.details || 'Detailed information not available.')
     } catch (error) {
       console.error('Error fetching organ development:', error)
       setOrganDevelopment('N/A')
       setOrganDevelopmentEmoji('❓')
+      setOrganDevelopmentDetails('Unable to load detailed information. Please try again.')
     } finally {
       setLoadingOrganDevelopment(false)
+    }
+  }
+
+  const fetchBabyAbilities = async (weeks: number) => {
+    if (weeks === 0 || (babyAbilities !== '...' && babyAbilitiesDetails !== 'Loading detailed information...')) return // Don't fetch if already loaded
+
+    try {
+      setLoadingBabyAbilities(true)
+
+      const profileInfo = profile ? `
+Profile Information:
+- Pregnancy type: ${profile.pregnancy_type || 'single'}
+- Number of babies: ${profile.number_of_babies || 1}
+- Mother's age: ${profile.age || 'Not specified'}
+- Previous pregnancies: ${profile.previous_pregnancies || 0}
+` : ''
+
+      const prompt = `For a pregnancy at week ${weeks} of gestation, provide information about what the baby can do now.
+${profileInfo}
+
+Respond with ONLY a JSON object in this exact format:
+{
+  "ability": "main ability/capability (2-3 words)",
+  "emoji": "appropriate emoji",
+  "details": "Detailed information for parents (150-200 words). Include: current sensory abilities (hearing, sight, touch, taste), movements and reflexes, response to external stimuli, brain development related to abilities, what parents can do to interact with baby, and any relevant advice based on the profile information. Make it warm, encouraging, and informative."
+}
+
+Example: {"ability": "Hearing Sounds", "emoji": "👂", "details": "This week, your baby can..."}
+
+Do not include any other text outside the JSON object.`
+
+      const response = await executeGroqPrompt(prompt)
+      const parsed = JSON.parse(response.trim())
+      setBabyAbilities(parsed.ability)
+      setBabyAbilitiesEmoji(parsed.emoji)
+      setBabyAbilitiesDetails(parsed.details || 'Detailed information not available.')
+    } catch (error) {
+      console.error('Error fetching baby abilities:', error)
+      setBabyAbilities('N/A')
+      setBabyAbilitiesEmoji('❓')
+      setBabyAbilitiesDetails('Unable to load detailed information. Please try again.')
+    } finally {
+      setLoadingBabyAbilities(false)
+    }
+  }
+
+  const fetchWeeksAlongDetails = async (weeks: number, dueDate: Date) => {
+    if (weeks === 0 || weeksAlongDetails) return // Don't fetch if already loaded
+
+    try {
+      const profileInfo = profile ? `
+Profile Information:
+- Pregnancy type: ${profile.pregnancy_type || 'single'}
+- Number of babies: ${profile.number_of_babies || 1}
+- Mother's age: ${profile.age || 'Not specified'}
+- Previous pregnancies: ${profile.previous_pregnancies || 0}
+- Conception type: ${profile.conception_type || 'Not specified'}
+- Activity level: ${profile.activity_level || 'Not specified'}
+` : ''
+
+      const prompt = `Provide detailed information for parents who are at week ${weeks} of pregnancy, with an estimated due date of ${dueDate.toLocaleDateString()}.
+${profileInfo}
+
+Provide warm, encouraging, and informative content (150-200 words) that includes:
+- Overview of what week ${weeks} means in the pregnancy journey
+- Key milestones at this stage
+- What's typical for this week
+- Tips for staying healthy and comfortable
+- What to expect in the coming weeks
+- Any relevant advice based on the profile information
+
+Make it personal and supportive. Respond with ONLY the detailed text, no JSON.`
+
+      const response = await executeGroqPrompt(prompt)
+      setWeeksAlongDetails(response.trim())
+    } catch (error) {
+      console.error('Error fetching weeks along details:', error)
+      setWeeksAlongDetails('Unable to load detailed information. Please try again.')
+    }
+  }
+
+  const fetchDaysToGoDetails = async (days: number, dueDate: Date) => {
+    if (days === 0 || daysToGoDetails) return // Don't fetch if already loaded
+
+    try {
+      const profileInfo = profile ? `
+Profile Information:
+- Pregnancy type: ${profile.pregnancy_type || 'single'}
+- Number of babies: ${profile.number_of_babies || 1}
+- Mother's age: ${profile.age || 'Not specified'}
+- Previous pregnancies: ${profile.previous_pregnancies || 0}
+- Work physical demand: ${profile.work_physical_demand || 'Not specified'}
+- Has exercise restrictions: ${profile.has_exercise_restrictions ? 'Yes' : 'No'}
+` : ''
+
+      const prompt = `Provide detailed information for parents who have ${days} days remaining until their due date (${dueDate.toLocaleDateString()}).
+${profileInfo}
+
+Provide warm, encouraging, and informative content (150-200 words) that includes:
+- What this countdown means
+- How to prepare for the final stretch
+- Important tasks and preparations to complete
+- Self-care tips for the remaining time
+- What to pack for the hospital
+- Signs of labor to watch for
+- Any relevant advice based on the profile information
+
+Make it practical and reassuring. Respond with ONLY the detailed text, no JSON.`
+
+      const response = await executeGroqPrompt(prompt)
+      setDaysToGoDetails(response.trim())
+    } catch (error) {
+      console.error('Error fetching days to go details:', error)
+      setDaysToGoDetails('Unable to load detailed information. Please try again.')
+    }
+  }
+
+  const fetchWeeksLeftDetails = async (weeksRemaining: number, dueDate: Date) => {
+    if (weeksRemaining === 0 || weeksLeftDetails) return // Don't fetch if already loaded
+
+    try {
+      const profileInfo = profile ? `
+Profile Information:
+- Pregnancy type: ${profile.pregnancy_type || 'single'}
+- Number of babies: ${profile.number_of_babies || 1}
+- Mother's age: ${profile.age || 'Not specified'}
+- Previous pregnancies: ${profile.previous_pregnancies || 0}
+- Pre-existing conditions: ${profile.pre_existing_conditions?.join(', ') || 'None'}
+- Current complications: ${profile.current_complications || 'None'}
+` : ''
+
+      const prompt = `Provide detailed information for parents who have ${weeksRemaining} weeks remaining until their due date (${dueDate.toLocaleDateString()}).
+${profileInfo}
+
+Provide warm, encouraging, and informative content (150-200 words) that includes:
+- What to expect in the remaining ${weeksRemaining} weeks
+- Weekly milestones ahead
+- Preparing for delivery and postpartum
+- Final medical appointments and tests
+- Emotional preparation for parenthood
+- Support system and planning
+- Any relevant advice based on the profile information
+
+Make it supportive and forward-looking. Respond with ONLY the detailed text, no JSON.`
+
+      const response = await executeGroqPrompt(prompt)
+      setWeeksLeftDetails(response.trim())
+    } catch (error) {
+      console.error('Error fetching weeks left details:', error)
+      setWeeksLeftDetails('Unable to load detailed information. Please try again.')
     }
   }
 
@@ -347,18 +603,96 @@ What organ or body system is the baby primarily developing this week? Provide a 
       <Container maxWidth="lg" sx={dashboardStyles.container}>
         {/* Welcome Card */}
         <Card sx={dashboardStyles.welcomeCard}>
+          {/* Expand/Collapse Button */}
+          <IconButton
+            onClick={() => setFactsExpanded(!factsExpanded)}
+            sx={{
+              position: 'absolute',
+              top: 16,
+              right: 16,
+              color: 'white',
+              bgcolor: 'rgba(255, 255, 255, 0.15)',
+              backdropFilter: 'blur(10px)',
+              '&:hover': {
+                bgcolor: 'rgba(255, 255, 255, 0.25)',
+              },
+              transition: 'all 0.3s ease',
+              zIndex: 10,
+            }}
+            aria-label={factsExpanded ? 'Collapse facts' : 'Expand facts'}
+          >
+            {factsExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          </IconButton>
+
           <Box sx={dashboardStyles.welcomeContent}>
             <Typography variant="h3" sx={{ fontWeight: 800, mb: 2 }}>
               Hey {user.user_metadata?.full_name?.split(' ')[0] || 'Mama'}! 👋
             </Typography>
-            <Typography variant="h6" sx={{ opacity: 0.95, fontWeight: 500 }}>
+            <Typography variant="h6" sx={{ opacity: 0.95, fontWeight: 500, mb: factsExpanded ? 3 : 0 }}>
               Welcome to your pregnancy journey dashboard
             </Typography>
+
+            {/* Pregnancy Facts Carousel */}
+            <Collapse in={factsExpanded} timeout={600}>
+              <PregnancyFactsCarousel
+                profile={profile}
+                pregnancyWeeks={pregnancyWeeks}
+                factCount={5}
+              />
+            </Collapse>
           </Box>
         </Card>
 
-        {/* Stats Grid */}
-        <Box sx={dashboardStyles.statsGrid}>
+        {/* Basic Information Section */}
+        <Box
+          sx={{
+            background: 'transparent',
+            borderRadius: 3,
+            p: 3,
+            mb: 4,
+            position: 'relative',
+          }}
+        >
+          {/* Section Header */}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              mb: 3,
+            }}
+          >
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: 700,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              Basic Information
+            </Typography>
+            <IconButton
+              onClick={() => setCardsExpanded(!cardsExpanded)}
+              sx={{
+                color: '#667eea',
+                bgcolor: 'rgba(102, 126, 234, 0.1)',
+                '&:hover': {
+                  bgcolor: 'rgba(102, 126, 234, 0.2)',
+                },
+                transition: 'all 0.3s ease',
+              }}
+              aria-label={cardsExpanded ? 'Collapse basic information' : 'Expand basic information'}
+            >
+              {cardsExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            </IconButton>
+          </Box>
+
+          {/* Stats Grid */}
+          <Collapse in={cardsExpanded} timeout={600}>
+            <Box sx={dashboardStyles.statsGrid}>
           {/* Card 1: Weeks Along */}
           <Box sx={dashboardStyles.flipCardContainer} onClick={() => handleCardFlip('weeksAlong')}>
             <Box sx={dashboardStyles.flipCardInner(flippedCards.weeksAlong)}>
@@ -368,9 +702,14 @@ What organ or body system is the baby primarily developing this week? Provide a 
                 <Typography sx={dashboardStyles.statLabel}>Weeks Along</Typography>
               </Card>
               <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardBack]}>
-                <Typography variant="body2" color="text.secondary">
-                  Detailed information coming soon
-                </Typography>
+                <Box sx={{ p: 2, overflowY: 'auto', maxHeight: '100%' }}>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: '#667eea' }}>
+                    Week {pregnancyWeeks} Journey
+                  </Typography>
+                  <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary' }}>
+                    {weeksAlongDetails || 'Loading detailed information...'}
+                  </Typography>
+                </Box>
               </Card>
             </Box>
           </Box>
@@ -384,9 +723,14 @@ What organ or body system is the baby primarily developing this week? Provide a 
                 <Typography sx={dashboardStyles.statLabel}>Days to Go</Typography>
               </Card>
               <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardBack]}>
-                <Typography variant="body2" color="text.secondary">
-                  Detailed information coming soon
-                </Typography>
+                <Box sx={{ p: 2, overflowY: 'auto', maxHeight: '100%' }}>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: '#667eea' }}>
+                    Countdown to Baby
+                  </Typography>
+                  <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary' }}>
+                    {daysToGoDetails || 'Loading detailed information...'}
+                  </Typography>
+                </Box>
               </Card>
             </Box>
           </Box>
@@ -400,9 +744,14 @@ What organ or body system is the baby primarily developing this week? Provide a 
                 <Typography sx={dashboardStyles.statLabel}>Weeks Left</Typography>
               </Card>
               <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardBack]}>
-                <Typography variant="body2" color="text.secondary">
-                  Detailed information coming soon
-                </Typography>
+                <Box sx={{ p: 2, overflowY: 'auto', maxHeight: '100%' }}>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: '#667eea' }}>
+                    Final Weeks Ahead
+                  </Typography>
+                  <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary' }}>
+                    {weeksLeftDetails || 'Loading detailed information...'}
+                  </Typography>
+                </Box>
               </Card>
             </Box>
           </Box>
@@ -420,9 +769,14 @@ What organ or body system is the baby primarily developing this week? Provide a 
                 <Typography sx={dashboardStyles.statLabel}>Is the size of your little one this week</Typography>
               </Card>
               <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardBack]}>
-                <Typography variant="body2" color="text.secondary">
-                  Detailed information coming soon
-                </Typography>
+                <Box sx={{ p: 2, overflowY: 'auto', maxHeight: '100%' }}>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: '#667eea' }}>
+                    Baby Size Details
+                  </Typography>
+                  <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary' }}>
+                    {fetusSizeDetails}
+                  </Typography>
+                </Box>
               </Card>
             </Box>
           </Box>
@@ -440,12 +794,44 @@ What organ or body system is the baby primarily developing this week? Provide a 
                 <Typography sx={dashboardStyles.statLabel}>Is the Organ forming now</Typography>
               </Card>
               <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardBack]}>
-                <Typography variant="body2" color="text.secondary">
-                  Detailed information coming soon
-                </Typography>
+                <Box sx={{ p: 2, overflowY: 'auto', maxHeight: '100%' }}>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: '#667eea' }}>
+                    Organ Development Details
+                  </Typography>
+                  <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary' }}>
+                    {organDevelopmentDetails}
+                  </Typography>
+                </Box>
               </Card>
             </Box>
           </Box>
+
+          {/* Card 6: Baby Abilities */}
+          <Box sx={dashboardStyles.flipCardContainer} onClick={() => handleCardFlip('babyAbilities')}>
+            <Box sx={dashboardStyles.flipCardInner(flippedCards.babyAbilities)}>
+              <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardFront]}>
+                <Typography sx={{ fontSize: '4rem', mb: 1 }}>
+                  {loadingBabyAbilities ? '...' : babyAbilitiesEmoji}
+                </Typography>
+                <Typography sx={dashboardStyles.statValue}>
+                  {loadingBabyAbilities ? '...' : babyAbilities}
+                </Typography>
+                <Typography sx={dashboardStyles.statLabel}>What baby can do now</Typography>
+              </Card>
+              <Card sx={[dashboardStyles.statCard, dashboardStyles.flipCardBack]}>
+                <Box sx={{ p: 2, overflowY: 'auto', maxHeight: '100%' }}>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: '#667eea' }}>
+                    Baby's Abilities
+                  </Typography>
+                  <Typography variant="body2" sx={{ lineHeight: 1.7, color: 'text.secondary' }}>
+                    {babyAbilitiesDetails}
+                  </Typography>
+                </Box>
+              </Card>
+            </Box>
+          </Box>
+            </Box>
+          </Collapse>
         </Box>
 
         {/* Placeholder for future content */}
@@ -460,264 +846,6 @@ What organ or body system is the baby primarily developing this week? Provide a 
             Track appointments • Monitor symptoms • Connect with community • And so much more!
           </Typography>
         </Box>
-
-        {/* AI Prompts Section */}
-        {aiPrompts && (
-          <Box sx={dashboardStyles.promptsSection}>
-            <Typography sx={dashboardStyles.promptsSectionTitle}>
-              AI Pregnancy Insights Prompts 🤖✨
-            </Typography>
-
-            <Box sx={dashboardStyles.promptCard}>
-              <Typography sx={dashboardStyles.promptTitle}>
-                🗓️ Prompt 1: Calculate Current Week of Gestation
-              </Typography>
-              <Typography sx={dashboardStyles.promptText}>
-                {aiPrompts.gestationWeek}
-              </Typography>
-              <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                <Button
-                  variant="contained"
-                  onClick={() => handleExecutePrompt('gestationWeek', aiPrompts.gestationWeek, 'claude')}
-                  disabled={executingPrompt.key === 'gestationWeek' && executingPrompt.provider === 'claude'}
-                  sx={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #5568d3 0%, #63408b 100%)',
-                    },
-                  }}
-                >
-                  {executingPrompt.key === 'gestationWeek' && executingPrompt.provider === 'claude' ? (
-                    <>
-                      <CircularProgress size={20} sx={{ mr: 1, color: 'white' }} />
-                      Executing...
-                    </>
-                  ) : (
-                    'Execute with Claude ✨'
-                  )}
-                </Button>
-                <Button
-                  variant="contained"
-                  onClick={() => handleExecutePrompt('gestationWeek', aiPrompts.gestationWeek, 'groq')}
-                  disabled={executingPrompt.key === 'gestationWeek' && executingPrompt.provider === 'groq'}
-                  sx={{
-                    background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #d97fe3 0%, #dc4a5c 100%)',
-                    },
-                  }}
-                >
-                  {executingPrompt.key === 'gestationWeek' && executingPrompt.provider === 'groq' ? (
-                    <>
-                      <CircularProgress size={20} sx={{ mr: 1, color: 'white' }} />
-                      Executing...
-                    </>
-                  ) : (
-                    'Execute with Groq 🚀'
-                  )}
-                </Button>
-              </Box>
-              {aiResponses.gestationWeek?.claude && (
-                <Box sx={{
-                  mt: 2,
-                  p: 2,
-                  borderRadius: 2,
-                  background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1))',
-                  border: '1px solid rgba(102, 126, 234, 0.2)',
-                }}>
-                  <Typography sx={{ fontWeight: 600, mb: 1, color: '#667eea' }}>
-                    Claude Response:
-                  </Typography>
-                  <Typography sx={{ lineHeight: 1.7 }}>
-                    {aiResponses.gestationWeek.claude}
-                  </Typography>
-                </Box>
-              )}
-              {aiResponses.gestationWeek?.groq && (
-                <Box sx={{
-                  mt: 2,
-                  p: 2,
-                  borderRadius: 2,
-                  background: 'linear-gradient(135deg, rgba(240, 147, 251, 0.1), rgba(245, 87, 108, 0.1))',
-                  border: '1px solid rgba(240, 147, 251, 0.2)',
-                }}>
-                  <Typography sx={{ fontWeight: 600, mb: 1, color: '#f5576c' }}>
-                    Groq Response:
-                  </Typography>
-                  <Typography sx={{ lineHeight: 1.7 }}>
-                    {aiResponses.gestationWeek.groq}
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-
-            <Box sx={dashboardStyles.promptCard}>
-              <Typography sx={dashboardStyles.promptTitle}>
-                👶 Prompt 2: Baby Size Comparison
-              </Typography>
-              <Typography sx={dashboardStyles.promptText}>
-                {aiPrompts.babySize}
-              </Typography>
-              <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                <Button
-                  variant="contained"
-                  onClick={() => handleExecutePrompt('babySize', aiPrompts.babySize, 'claude')}
-                  disabled={executingPrompt.key === 'babySize' && executingPrompt.provider === 'claude'}
-                  sx={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #5568d3 0%, #63408b 100%)',
-                    },
-                  }}
-                >
-                  {executingPrompt.key === 'babySize' && executingPrompt.provider === 'claude' ? (
-                    <>
-                      <CircularProgress size={20} sx={{ mr: 1, color: 'white' }} />
-                      Executing...
-                    </>
-                  ) : (
-                    'Execute with Claude ✨'
-                  )}
-                </Button>
-                <Button
-                  variant="contained"
-                  onClick={() => handleExecutePrompt('babySize', aiPrompts.babySize, 'groq')}
-                  disabled={executingPrompt.key === 'babySize' && executingPrompt.provider === 'groq'}
-                  sx={{
-                    background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #d97fe3 0%, #dc4a5c 100%)',
-                    },
-                  }}
-                >
-                  {executingPrompt.key === 'babySize' && executingPrompt.provider === 'groq' ? (
-                    <>
-                      <CircularProgress size={20} sx={{ mr: 1, color: 'white' }} />
-                      Executing...
-                    </>
-                  ) : (
-                    'Execute with Groq 🚀'
-                  )}
-                </Button>
-              </Box>
-              {aiResponses.babySize?.claude && (
-                <Box sx={{
-                  mt: 2,
-                  p: 2,
-                  borderRadius: 2,
-                  background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1))',
-                  border: '1px solid rgba(102, 126, 234, 0.2)',
-                }}>
-                  <Typography sx={{ fontWeight: 600, mb: 1, color: '#667eea' }}>
-                    Claude Response:
-                  </Typography>
-                  <Typography sx={{ lineHeight: 1.7 }}>
-                    {aiResponses.babySize.claude}
-                  </Typography>
-                </Box>
-              )}
-              {aiResponses.babySize?.groq && (
-                <Box sx={{
-                  mt: 2,
-                  p: 2,
-                  borderRadius: 2,
-                  background: 'linear-gradient(135deg, rgba(240, 147, 251, 0.1), rgba(245, 87, 108, 0.1))',
-                  border: '1px solid rgba(240, 147, 251, 0.2)',
-                }}>
-                  <Typography sx={{ fontWeight: 600, mb: 1, color: '#f5576c' }}>
-                    Groq Response:
-                  </Typography>
-                  <Typography sx={{ lineHeight: 1.7 }}>
-                    {aiResponses.babySize.groq}
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-
-            <Box sx={dashboardStyles.promptCard}>
-              <Typography sx={dashboardStyles.promptTitle}>
-                🫀 Prompt 3: Current Organ Development
-              </Typography>
-              <Typography sx={dashboardStyles.promptText}>
-                {aiPrompts.organDevelopment}
-              </Typography>
-              <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                <Button
-                  variant="contained"
-                  onClick={() => handleExecutePrompt('organDevelopment', aiPrompts.organDevelopment, 'claude')}
-                  disabled={executingPrompt.key === 'organDevelopment' && executingPrompt.provider === 'claude'}
-                  sx={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #5568d3 0%, #63408b 100%)',
-                    },
-                  }}
-                >
-                  {executingPrompt.key === 'organDevelopment' && executingPrompt.provider === 'claude' ? (
-                    <>
-                      <CircularProgress size={20} sx={{ mr: 1, color: 'white' }} />
-                      Executing...
-                    </>
-                  ) : (
-                    'Execute with Claude ✨'
-                  )}
-                </Button>
-                <Button
-                  variant="contained"
-                  onClick={() => handleExecutePrompt('organDevelopment', aiPrompts.organDevelopment, 'groq')}
-                  disabled={executingPrompt.key === 'organDevelopment' && executingPrompt.provider === 'groq'}
-                  sx={{
-                    background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #d97fe3 0%, #dc4a5c 100%)',
-                    },
-                  }}
-                >
-                  {executingPrompt.key === 'organDevelopment' && executingPrompt.provider === 'groq' ? (
-                    <>
-                      <CircularProgress size={20} sx={{ mr: 1, color: 'white' }} />
-                      Executing...
-                    </>
-                  ) : (
-                    'Execute with Groq 🚀'
-                  )}
-                </Button>
-              </Box>
-              {aiResponses.organDevelopment?.claude && (
-                <Box sx={{
-                  mt: 2,
-                  p: 2,
-                  borderRadius: 2,
-                  background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1))',
-                  border: '1px solid rgba(102, 126, 234, 0.2)',
-                }}>
-                  <Typography sx={{ fontWeight: 600, mb: 1, color: '#667eea' }}>
-                    Claude Response:
-                  </Typography>
-                  <Typography sx={{ lineHeight: 1.7 }}>
-                    {aiResponses.organDevelopment.claude}
-                  </Typography>
-                </Box>
-              )}
-              {aiResponses.organDevelopment?.groq && (
-                <Box sx={{
-                  mt: 2,
-                  p: 2,
-                  borderRadius: 2,
-                  background: 'linear-gradient(135deg, rgba(240, 147, 251, 0.1), rgba(245, 87, 108, 0.1))',
-                  border: '1px solid rgba(240, 147, 251, 0.2)',
-                }}>
-                  <Typography sx={{ fontWeight: 600, mb: 1, color: '#f5576c' }}>
-                    Groq Response:
-                  </Typography>
-                  <Typography sx={{ lineHeight: 1.7 }}>
-                    {aiResponses.organDevelopment.groq}
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-          </Box>
-        )}
       </Container>
 
       {/* Profile Setup Modal */}
